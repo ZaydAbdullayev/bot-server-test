@@ -1,18 +1,18 @@
 const service = require("../service/order.service");
 
 class OrderController {
-    async getMyOrders(userId) {
+    async getMyOrders(userId, dbName) {
         try {
-            const data = await service.getMyOrders(userId);
+            const data = await service.getMyOrders(userId, dbName);
             return data;
         } catch (error) {
             return { error: error.message };
         }
     }
 
-    async askDeleteOrder(status, orderId) {
+    async askDeleteOrder(status, orderId, dbName) {
         try {
-            const data = await service.askDeleteOrder(status, orderId);
+            const data = await service.askDeleteOrder(status, orderId, dbName);
             return data;
         } catch (error) {
             return { error: error.message };

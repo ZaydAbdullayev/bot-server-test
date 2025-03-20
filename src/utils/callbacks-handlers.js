@@ -1,8 +1,9 @@
 const { setupSendMessages } = require("./response");
 const service = require("../service/register.service");
-const {
-    calcTimeRange,
-} = require("../utils/services");
+const { calcTimeRange } = require("../utils/services");
+const path = require("path");
+const statePath = path.join(process.cwd(), 'mocks/state.js');
+const state = require(statePath);
 const {
     ownersChatId,
 } = require("../../mocks/security");
@@ -12,7 +13,7 @@ const db = require("../service/query.service");
 const { setupExtras } = require("./extras");
 const { setupOrders } = require("./order");
 const { setupReports } = require("./report-handlers");
-const { bonuses, winners } = require("../../mocks/state");
+const { bonuses, winners } = state;
 require("dotenv").config();
 
 const dbName = process.env.DB_NAME;
@@ -161,7 +162,7 @@ const setupCallbackHandlers = (bot) => {
     const acc_number = async (callbackQuery, dinamic, form) => {
         const userId = callbackQuery.from.id;
         const acc_number = dinamic;
-        form[userId] = { ...form[userId], acc_number, order: "time" };
+        form[userId] = { acc_number, order: "time" };
         bot.answerCallbackQuery(callbackQuery.id, {
             text: "Akkaunt qabul qilindi!",
             show_alert: false,
@@ -280,7 +281,7 @@ const setupCallbackHandlers = (bot) => {
     const accept_discount = async (callbackQuery, dinamic) => {
         const userId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
-        if (ownersChatId.includes(userId.toString())) {
+        if (ownersChatId.includes(userId)) {
             const [amount, deedline] = dinamic?.split("_");
             const values = { amount, deedline }
             const s = await o_controller.createDiscount(values);
@@ -384,7 +385,7 @@ const setupCallbackHandlers = (bot) => {
                 sendMessage(chatId, message, options);
             });
         } else {
-            bot.sendMessage(chatId, "Bonuslar mavjud emas!");
+            bot.sendMessage(chatId, "Aktiv bonuslar mavjud emas!");
         }
     }
     const passive_bonus_by_id = async (callbackQuery, dinamic) => {
@@ -530,7 +531,7 @@ const setupCallbackHandlers = (bot) => {
     const accept_bonus = async (callbackQuery, dinamic) => {
         const userId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
-        if (ownersChatId.includes(userId.toString())) {
+        if (ownersChatId.includes(userId)) {
             const ids = callbackQuery.message.text.split("\n")[0].split(": ")[1];
             const bonuses = ids.split(",");
             let tarifs_text = "";
@@ -663,9 +664,10 @@ const setupCallbackHandlers = (bot) => {
     const accept_start_time = async (callbackQuery, dinamic) => {
         const chatId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
+        const bot_username = process.env.BOT_USERNAME;
         bot.sendMessage(
             chatId,
-            `Harid shabloni tayyor 👇\n\n\`@ATOMIC_RENT_BOT ${dinamic}\`\n\`@ATOMIC_RENT_BOT ${dinamic}\`\n\`@ATOMIC_RENT_BOT ${dinamic}\``,
+            `Harid shabloni tayyor 👇\n\n\`${bot_username} ${dinamic}\`\n\`${bot_username} ${dinamic}\`\n\`${bot_username} ${dinamic}\``,
             { parse_mode: "Markdown" }
         );
 

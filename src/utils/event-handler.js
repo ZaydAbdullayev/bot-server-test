@@ -8,8 +8,13 @@ const service = require("../service/register.service");
 const o_controller = require("../controller/order.controller");
 const { parseTextSimple, generateId } = require("../utils/services");
 const { setupSendMessages } = require("./response");
-const { lobby, acc_data } = require("../../mocks/state");
+const path = require("path");
+const statePath = path.join(process.cwd(), 'mocks/state.js');
+const state = require(statePath);
+const { lobby, acc_data, test_data } = state;
+require('dotenv').config();
 
+const db_name = process.env.DB_NAME;
 const dayjs = require("dayjs");
 
 const setupEventHandlers = (bot) => {
@@ -24,12 +29,12 @@ const setupEventHandlers = (bot) => {
         const userID = msg.from.id;
         const userName = msg.from.first_name;
 
-        if (ownersChatId.includes(userID.toString())) {
+        if (ownersChatId.includes(userID)) {
             bot.setMyCommands(adminCommands, {
                 scope: { type: "chat", chat_id: chatId },
             });
             bot.sendMessage(chatId, "Assalomu alaykum, Admin!");
-        } else if (myChatId.includes(userID.toString())) {
+        } else if (myChatId.includes(userID)) {
             bot.setMyCommands(myCommands, {
                 scope: { type: "chat", chat_id: chatId },
             });
@@ -215,7 +220,7 @@ const setupEventHandlers = (bot) => {
     });
     bot.onText(/\/app/, (msg) => {
         const chatId = msg.chat.id;
-        const webAppUrl = `https://bot.foodify.uz?chatId=${chatId}&&type=home&&mode=keyboard`;
+        const webAppUrl = `https://bot.foodify.uz?chatId=${chatId}&&type=home&&mode=keyboard&&db_name=${db_name}`;
         // const webAppUrl = `https://xhvvffvj-5173.euw.devtunnels.ms?chatId=${chatId}&&type=home`;
         bot.sendMessage(chatId, "Site ochish uchun pastdagi tugmani bosing:", {
             reply_markup: {
@@ -301,7 +306,7 @@ price_list: {
     });
     bot.onText(/\/discount/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(`${chatId}`)) {
+        if (ownersChatId.includes(chatId)) {
             const discounts = await o_controller.getDiscounts();
             const options = {
                 reply_markup: {
@@ -318,7 +323,7 @@ price_list: {
     })
     bot.onText(/\/bonus/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(`${chatId}`)) {
+        if (ownersChatId.includes(chatId)) {
             const bonuses = await o_controller.getBonusesList();
             const options = {
                 reply_markup: {
@@ -336,7 +341,7 @@ price_list: {
     })
     bot.onText(/\/free/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(`${chatId}`)) {
+        if (ownersChatId.includes(chatId)) {
             const options = {
                 reply_markup: {
                     inline_keyboard: [
@@ -355,7 +360,7 @@ price_list: {
     });
     bot.onText(/\/report/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(`${chatId}`) || myChatId.includes(`${chatId}`)) {
+        if (ownersChatId.includes(chatId) || myChatId.includes(chatId)) {
             const options = {
                 reply_markup: {
                     inline_keyboard: [
@@ -402,7 +407,9 @@ price_list: {
     });
     bot.onText(/\/test/, async (msg) => {
         const chatId = msg.chat.id;
-        console.log(chatId);
+        // console.log(chatId);
+        test_data[2300] = "test baslatildi";
+        bot.sendMessage(chatId, "starting test");
 
         // let data = {
         //   user_id: '5750925866',

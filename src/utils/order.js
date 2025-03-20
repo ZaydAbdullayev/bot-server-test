@@ -13,7 +13,7 @@ const {
     askCancelChetId,
     newOrdersChatId,
     deletedOrdersChatId,
-    registeredUsersChatID
+    registeredUsersChatID,
 } = require("../../mocks/security");
 const o_controller = require("../controller/order.controller");
 
@@ -140,8 +140,9 @@ const setupOrders = (bot) => {
     };
     const payment_order_accept = async (callbackQuery, dinamic, form) => {
         const userId = callbackQuery.from.id;
-        const [user_id, message_id] = dinamic?.split("_");
-        if (ownersChatId.includes(userId.toString())) {
+        const user_id = dinamic;
+        const message_id = callbackQuery.message.message_id;
+        if (ownersChatId.includes(userId)) {
             const user = form[user_id];
 
             if (!user) {
@@ -171,8 +172,8 @@ const setupOrders = (bot) => {
                 id: shablon_id,
                 start_time: `${user.start_date?.split(" -")[0]} - ${start_hour}`,
                 imgs: user.photo,
-                mobile_info: user.mobile_info,
-                location: user.location,
+                mobile_info: user.mobile_info || 'can not get mobile info',
+                location: user.location || [null, null],
             };
             const s = await service.handleUserResponse(value, action_hour);
             if (s) {
@@ -206,49 +207,25 @@ const setupOrders = (bot) => {
                 bot
                     .sendMediaGroup(closedOrdersChatId, mediaGroup)
                     .then(() => {
-                        bot
-                            .sendMessage(closedOrdersChatId, adminMessage, {
-                                reply_markup: {
-                                    inline_keyboard: [
-                                        [
-                                            {
-                                                text: "O'chirish",
-                                                callback_data: `order_delete|${shablon_id}`,
-                                            },
-                                            {
-                                                text: "Taxrirlash",
-                                                callback_data: `edit_options|${shablon_id}`,
-                                            },
-                                        ],
+                        bot.sendMessage(closedOrdersChatId, adminMessage, {
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [
+                                        {
+                                            text: "O'chirish",
+                                            callback_data: `order_delete|${shablon_id}`,
+                                        },
+                                        {
+                                            text: "Taxrirlash",
+                                            callback_data: `edit_options|${shablon_id}`,
+                                        },
                                     ],
-                                },
-                                parse_mode: "Markdown",
-                            })
-                            .then((sentMessage) => {
-                                const msg_id = sentMessage.message_id;
-                                bot.editMessageReplyMarkup(
-                                    {
-                                        inline_keyboard: [
-                                            [
-                                                {
-                                                    text: "O'chirish",
-                                                    callback_data: `order_delete|${shablon_id}_${msg_id}`,
-                                                },
-                                                {
-                                                    text: "Taxrirlash",
-                                                    callback_data: `edit_options|${shablon_id}_${msg_id}`,
-                                                },
-                                            ],
-                                        ],
-                                    },
-                                    {
-                                        chat_id: closedOrdersChatId,
-                                        message_id: msg_id,
-                                    }
-                                );
-                            });
+                                ],
+                            },
+                            parse_mode: "Markdown",
+                        })
 
-                        Object.assign(form[user_id], {});
+                        form[user_id] = {};
                     })
                     .catch((error) => {
                         console.error("payment_order_accept mesaj edit etme hatasi:");
@@ -264,7 +241,7 @@ const setupOrders = (bot) => {
     const payment_order_reject = async (callbackQuery, dinamic, form) => {
         const userId = callbackQuery.from.id;
         const ids = dinamic?.split("_");
-        if (ownersChatId.includes(userId.toString())) {
+        if (ownersChatId.includes(userId)) {
             const user = form[ids[0]];
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Buyurtma rad etildi!",
@@ -285,8 +262,8 @@ const setupOrders = (bot) => {
         }
     };
     const order_delete = async (callbackQuery, dinamic) => {
-        const ids = dinamic?.split("_");
-        let s = await o_controller.askDeleteOrder(5, ids[0]);
+        const main_msg_id = callbackQuery.message.message_id;
+        let s = await o_controller.askDeleteOrder(5, dinamic);
         if (s) {
             s = s[0];
             const formattedValue = s?.paid
@@ -300,8 +277,8 @@ const setupOrders = (bot) => {
                 text: "Buyurtma o'chirilganlar ro'yxatiga qo'shildi!",
                 show_alert: true,
             });
-            deleteMessage(closedOrdersChatId, parseInt(ids[1]) - 1);
-            deleteMessage(closedOrdersChatId, ids[1]);
+            deleteMessage(closedOrdersChatId, parseInt(main_msg_id) - 1);
+            deleteMessage(closedOrdersChatId, main_msg_id);
 
             const mediaGroup = JSON?.parse(s?.imgs)?.map((photoId) => ({
                 type: "photo",
@@ -317,7 +294,7 @@ const setupOrders = (bot) => {
                                     [
                                         {
                                             text: "Orqaga qaytarish",
-                                            callback_data: `back|${ids[0]}`,
+                                            callback_data: `back|${dinamic}`,
                                         },
                                     ],
                                 ],
@@ -332,7 +309,7 @@ const setupOrders = (bot) => {
                                         [
                                             {
                                                 text: "Orqaga qaytarish",
-                                                callback_data: `back|${ids[0]}_${msg_id}`,
+                                                callback_data: `back|${dinamic}_${msg_id}`,
                                             },
                                         ],
                                     ],
@@ -350,7 +327,7 @@ const setupOrders = (bot) => {
         }
     };
     const edit_options = async (callbackQuery, dinamic) => {
-        const ids = dinamic?.split("_");
+        const main_msg_id = callbackQuery.message.message_id;
         bot.answerCallbackQuery(callbackQuery.id, {
             text: "Buyurtma taxrirlash modiga o'tkazildi!",
             show_alert: false,
@@ -361,33 +338,33 @@ const setupOrders = (bot) => {
                     [
                         {
                             text: "Account",
-                            callback_data: `short_name|${ids[0]}_${ids[1]}`,
+                            callback_data: `short_name|${dinamic}_${main_msg_id}`,
                         },
                     ],
                     [
                         {
                             text: "Boshlanish vaqti",
-                            callback_data: `start_time|${ids[0]}_${ids[1]}`,
+                            callback_data: `start_time|${dinamic}_${main_msg_id}`,
                         },
                     ],
                     [
                         {
                             text: "Davomiyligi",
-                            callback_data: `time_length|${ids[0]}_${ids[1]}`,
+                            callback_data: `time_length|${dinamic}_${main_msg_id}`,
                         },
                     ],
                     [
                         {
                             text: "To'lov miqdori",
-                            callback_data: `payment_amount|${ids[0]}_${ids[1]}`,
+                            callback_data: `payment_amount|${dinamic}_${main_msg_id}`,
                         },
                     ],
-                    [{ text: "Orqaga", callback_data: `back_word|${ids[0]}_${ids[1]}` }],
+                    [{ text: "Orqaga", callback_data: `back_word|${dinamic}_${main_msg_id}` }],
                 ],
             },
             {
                 chat_id: closedOrdersChatId,
-                message_id: ids[1],
+                message_id: main_msg_id,
             }
         );
     };
@@ -433,11 +410,11 @@ const setupOrders = (bot) => {
                                             [
                                                 {
                                                     text: "O'chirish",
-                                                    callback_data: `order_delete|${user_id}_${message_id}`,
+                                                    callback_data: `order_delete|${user_id}`,
                                                 },
                                                 {
                                                     text: "Taxrirlash",
-                                                    callback_data: `edit_options|${user_id}_${message_id}`,
+                                                    callback_data: `edit_options|${user_id}`,
                                                 },
                                             ],
                                         ],
@@ -515,11 +492,11 @@ const setupOrders = (bot) => {
                                         [
                                             {
                                                 text: "O'chirish",
-                                                callback_data: `order_delete|${user_id}_${message_id}`,
+                                                callback_data: `order_delete|${user_id}`,
                                             },
                                             {
                                                 text: "Taxrirlash",
-                                                callback_data: `edit_options|${user_id}_${message_id}`,
+                                                callback_data: `edit_options|${user_id}`,
                                             },
                                         ],
                                     ],
@@ -589,11 +566,11 @@ const setupOrders = (bot) => {
                                         [
                                             {
                                                 text: "O'chirish",
-                                                callback_data: `order_delete|${user_id}_${message_id}`,
+                                                callback_data: `order_delete|${user_id}`,
                                             },
                                             {
                                                 text: "Taxrirlash",
-                                                callback_data: `edit_options|${user_id}_${message_id}`,
+                                                callback_data: `edit_options|${user_id}`,
                                             },
                                         ],
                                     ],
@@ -671,11 +648,11 @@ const setupOrders = (bot) => {
                                         [
                                             {
                                                 text: "O'chirish",
-                                                callback_data: `order_delete|${user_id}_${message_id}`,
+                                                callback_data: `order_delete|${user_id}`,
                                             },
                                             {
                                                 text: "Taxrirlash",
-                                                callback_data: `edit_options|${user_id}_${message_id}`,
+                                                callback_data: `edit_options|${user_id}`,
                                             },
                                         ],
                                     ],
@@ -716,11 +693,11 @@ const setupOrders = (bot) => {
                     [
                         {
                             text: "O'chirish",
-                            callback_data: `order_delete|${user_id}_${message_id}`,
+                            callback_data: `order_delete|${user_id}`,
                         },
                         {
                             text: "Taxrirlash",
-                            callback_data: `edit_options|${user_id}_${message_id}`,
+                            callback_data: `edit_options|${user_id}`,
                         },
                     ],
                 ],
@@ -735,7 +712,7 @@ const setupOrders = (bot) => {
         const userId = callbackQuery.from.id;
         const us_id = dinamic;
 
-        if (!ownersChatId.includes(userId.toString())) {
+        if (!ownersChatId.includes(userId)) {
             const user = templateDatas[us_id];
 
             if (!user) {
@@ -754,7 +731,7 @@ const setupOrders = (bot) => {
                 id: us_id,
                 start_time: `${user.month}.${user.day} - ${user.start_hour}`,
                 imgs: user.imgs,
-                mobile_info: user.mobile_info || "",
+                mobile_info: user.mobile_info || 'with shablon',
                 location: user.location || [null, null],
             };
 
@@ -775,6 +752,8 @@ const setupOrders = (bot) => {
                     type: "photo",
                     media: photoId,
                 }));
+                templateDatas[us_id] = {};
+                delete templateDatas[us_id];
                 bot
                     .sendMediaGroup(closedOrdersChatId, mediaGroup)
                     .then(() => {
@@ -796,34 +775,10 @@ const setupOrders = (bot) => {
                                 },
                                 parse_mode: "Markdown",
                             })
-                            .then((sentMessage) => {
-                                const msg_id = sentMessage.message_id;
-                                bot.editMessageReplyMarkup(
-                                    {
-                                        inline_keyboard: [
-                                            [
-                                                {
-                                                    text: "O'chirish",
-                                                    callback_data: `order_delete|${us_id}_${msg_id}`,
-                                                },
-                                                {
-                                                    text: "Taxrirlash",
-                                                    callback_data: `edit_options|${us_id}_${msg_id}`,
-                                                },
-                                            ],
-                                        ],
-                                    },
-                                    {
-                                        chat_id: closedOrdersChatId,
-                                        message_id: msg_id,
-                                    }
-                                );
-                            });
                     })
                     .catch((error) => {
                         console.error("payment_order_accept mesaj edit etme hatasi:");
                     });
-                delete templateDatas[us_id];
             } else {
                 bot.answerCallbackQuery(callbackQuery.id, {
                     text: "Harid shabloni allaqachon ishlatilgan!",
@@ -965,29 +920,6 @@ const setupOrders = (bot) => {
                             },
                             parse_mode: "Markdown",
                         })
-                        .then((sentMessage) => {
-                            const msg_id = sentMessage.message_id;
-                            bot.editMessageReplyMarkup(
-                                {
-                                    inline_keyboard: [
-                                        [
-                                            {
-                                                text: "O'chirish",
-                                                callback_data: `order_delete|${ids[0]}_${msg_id}`,
-                                            },
-                                            {
-                                                text: "Taxrirlash",
-                                                callback_data: `edit_options|${ids[0]}_${msg_id}`,
-                                            },
-                                        ],
-                                    ],
-                                },
-                                {
-                                    chat_id: closedOrdersChatId,
-                                    message_id: msg_id,
-                                }
-                            );
-                        });
                 })
                 .catch((error) => {
                     console.error("payment_order_accept mesaj edit etme hatasi:");

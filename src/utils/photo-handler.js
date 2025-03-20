@@ -153,28 +153,6 @@ const photoHandler = (bot) => {
                                 ],
                             },
                             parse_mode: "Markdown",
-                        }).then((sentMessage) => {
-                            const msg_id = sentMessage.message_id
-                            bot.editMessageReplyMarkup(
-                                {
-                                    inline_keyboard: [
-                                        [
-                                            {
-                                                text: "❌",
-                                                callback_data: `payment_order_reject|${chatId}_${msg_id}`,
-                                            },
-                                            {
-                                                text: "✅",
-                                                callback_data: `payment_order_accept|${chatId}_${msg_id}`,
-                                            },
-                                        ],
-                                    ],
-                                },
-                                {
-                                    chat_id: paidChanelId,
-                                    message_id: msg_id,
-                                }
-                            );
                         });
                     })
                     .catch((error) => {

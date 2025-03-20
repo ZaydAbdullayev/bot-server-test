@@ -119,6 +119,7 @@ const setupReports = (bot) => {
         });
         try {
             const s = await u_controller.getAccsShortName()
+            if (!s) return sendMessage(chatId, "Sizda accountlar mavjud emas!");
             const chunkedAccData = chunkArray(s, 5);
             sendMessage(chatId, "Qaysi akkauntni hisoblamoqchisiz?", {
                 reply_markup: {

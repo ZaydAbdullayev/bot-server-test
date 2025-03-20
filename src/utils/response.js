@@ -1,6 +1,9 @@
 const { adminChatIds } = require("../../mocks/security");
 const service = require("../service/register.service");
-const { winners } = require("../../mocks/state");
+const path = require("path");
+const statePath = path.join(process.cwd(), 'mocks/state.js');
+const state = require(statePath);
+const { winners } = state;
 
 const setupSendMessages = (bot) => {
     if (!bot) {

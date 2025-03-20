@@ -4,7 +4,10 @@ const {
     ownersChatId,
     deletedOrdersChatId,
 } = require("../../mocks/security");
-const { winners, konkurs_data } = require("../../mocks/state");
+const path = require("path");
+const statePath = path.join(process.cwd(), 'mocks/state.js');
+const state = require(statePath);
+const { winners, konkurs_data } = state;
 const default_konkurs_data = require("../../mocks/mock").default_konkurs_data;
 const u_controller = require("../controller/user.controller");
 const db = require("../service/query.service");
@@ -24,7 +27,7 @@ const setupExtras = (bot) => {
 
     const create_konkurs = async (callbackQuery) => {
         const chatId = callbackQuery.from.id;
-        if (ownersChatId.includes(`${chatId}`)) {
+        if (ownersChatId.includes(chatId)) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Konkurs yaratish boshlatildi!",
                 show_alert: false,
@@ -470,7 +473,7 @@ const setupExtras = (bot) => {
     const create_lobby = async (callbackQuery) => {
         let lobby = {}
         const chatId = callbackQuery.from.id;
-        if (ownersChatId.includes(`${chatId}`)) {
+        if (ownersChatId.includes(chatId)) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Lobby yaratish boshlatildi!",
                 show_alert: false,

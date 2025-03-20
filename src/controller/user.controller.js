@@ -2,9 +2,9 @@ const service = require("../service/user.service");
 const rg_service = require("../service/register.service");
 
 class UserController {
-    async getAllAccs() {
+    async getAllAccs(dbName) {
         try {
-            const data = await service.getAllAccs();
+            const data = await service.getAllAccs(dbName);
             const parsedData = JSON.parse(JSON.stringify(data));
             const result = parsedData.map((acc) => {
                 const imgs = JSON.parse(acc.imgs);
@@ -18,18 +18,18 @@ class UserController {
             return { error: error.message };
         }
     }
-    async getAccById(id) {
+    async getAccById(id, dbName) {
         try {
-            const data = await service.getAccById(id);
+            const data = await service.getAccById(id, dbName);
             return data;
         } catch (error) {
             return { error: error.message };
         }
     }
-    async addAcc(accData) {
+    async addAcc(accData, dbName) {
         try {
             const id = accData?.short_name;
-            const result = await rg_service.addAcc(accData, id);
+            const result = await rg_service.addAcc(accData, id, dbName);
             if (result) {
                 return { message: "ACC added successfully!", status: 200 };
             } else {
@@ -47,9 +47,9 @@ class UserController {
             return { error: error.message };
         }
     }
-    async updateAcc(data) {
+    async updateAcc(data, dbName) {
         try {
-            const result = await service.updateAcc(data, data?.acc_id);
+            const result = await service.updateAcc(data, data?.acc_id, dbName);
             if (result) {
                 return { message: "ACC updated successfully!", status: 200 };
             } else {
@@ -59,17 +59,17 @@ class UserController {
             return { error: error.message };
         }
     }
-    async getAccSalesListById(id) {
+    async getAccSalesListById(id, dbName) {
         try {
-            const data = await service.getAccSalesListById(id);
+            const data = await service.getAccSalesListById(id, dbName);
             return data;
         } catch (error) {
             return { error: error.message };
         }
     }
-    async addAccFavouriteList(data) {
+    async addAccFavouriteList(data, dbName) {
         try {
-            const result = await service.addAccFavouriteList(data);
+            const result = await service.addAccFavouriteList(data, dbName);
             if (result) {
                 return { message: "Added to favorite list!", status: 200 };
             } else {
@@ -79,9 +79,9 @@ class UserController {
             return { error: error.message };
         }
     }
-    async removeAccFavouriteList(data) {
+    async removeAccFavouriteList(data, dbName) {
         try {
-            const result = await service.removeAccFavouriteList(data);
+            const result = await service.removeAccFavouriteList(data, dbName);
             if (result) {
                 return { message: "delted to favorite list!", status: 200 };
             } else {
@@ -91,9 +91,9 @@ class UserController {
             return { error: error.message };
         }
     }
-    async getFavouriteList(userId) {
+    async getFavouriteList(userId, dbName) {
         try {
-            const data = await service.getFavouriteList(userId);
+            const data = await service.getFavouriteList(userId, dbName);
             return data;
         } catch (error) {
             return { error: error.message };

@@ -10,13 +10,11 @@ require('dotenv').config();
 
 const { generalCommands } = require("./mocks/mock");
 const {
-    token,
     ownersChatId,
     adminChatIds,
     myChatId,
     newOrdersChatId
 } = require("./mocks/security");
-const { mode, userInfo, acc_data, form, templateDatas, callballResult, winners } = require("./mocks/state");
 const {
     chunkArray,
     convertToTimeFormat,
@@ -24,6 +22,10 @@ const {
 const handler = require("./src/utils/event-handler");
 const path = require("path");
 const fs = require("fs");
+const statePath = path.join(process.cwd(), 'mocks/state.js');
+const state = require(statePath);
+const { mode, userInfo, acc_data, form, templateDatas, callballResult, winners } = state;
+
 
 const server = http.createServer((req, res) => {
     let filePath = path.join(__dirname, "imgs", req.url);
@@ -60,11 +62,12 @@ const io = socketIo(server, {
     transports: ["websocket", "polling"],
     cors: {
         origin: "*",
-        methods: ["GET", "POST"],
     },
 });
 
-const bot = new TelegramBot(token, { polling: true });
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+
 const {
     sendMessagesToAdmins,
     sendMessage,
@@ -83,7 +86,7 @@ bot.on("callback_query", async (callbackQuery) => {
     const function_name = callbackData.split("|");
 
     if (callbackData.startsWith("payment_order")) {
-        setupCallbackHandlers(bot, winners)[function_name[0]](
+        setupCallbackHandlers(bot)[function_name[0]](
             callbackQuery,
             function_name[1],
             form
@@ -91,24 +94,24 @@ bot.on("callback_query", async (callbackQuery) => {
     } else if (function_name[0] === "new_order_accept") {
         const user_id = function_name[1].split("_")[0];
         mode[user_id] = "user_dev";
-        setupCallbackHandlers(bot, winners)[function_name[0]](
+        setupCallbackHandlers(bot)[function_name[0]](
             callbackQuery,
             function_name[1]
         );
     } else if (function_name[0] === "acc_number") {
-        setupCallbackHandlers(bot, winners)[function_name[0]](
+        setupCallbackHandlers(bot)[function_name[0]](
             callbackQuery,
             function_name[1],
             form
         );
     } else if (function_name[0] === "form_accept") {
-        setupCallbackHandlers(bot, winners)[function_name[0]](
+        setupCallbackHandlers(bot)[function_name[0]](
             callbackQuery,
             function_name[1],
             templateDatas
         );
     } else if (function_name[0] === "edit_start_time") {
-        setupCallbackHandlers(bot, winners)[function_name[0]](
+        setupCallbackHandlers(bot)[function_name[0]](
             callbackQuery,
             function_name[1],
             templateDatas
@@ -147,13 +150,13 @@ bot.on("callback_query", async (callbackQuery) => {
             show_alert: false,
         });
     } else if (function_name[0] === "admin_accept") {
-        setupCallbackHandlers(bot, winners)[function_name[0]](
+        setupCallbackHandlers(bot)[function_name[0]](
             callbackQuery,
             function_name[1],
             userInfo
         );
     } else {
-        setupCallbackHandlers(bot, winners)[function_name[0]](
+        setupCallbackHandlers(bot)[function_name[0]](
             callbackQuery,
             function_name[1]
         );
@@ -167,8 +170,8 @@ bot.on("message", async (msg) => {
     const command = msg.text;
 
     if (
-        ownersChatId?.includes(userId.toString()) ||
-        myChatId?.includes(userId.toString())
+        ownersChatId?.includes(userId) ||
+        myChatId?.includes(userId)
     ) {
         if (command === "/get_all_user") {
             const results = await service.fetchAllUsers(chatId);
@@ -195,6 +198,7 @@ bot.on("message", async (msg) => {
             );
         } else if (command === "/shablon") {
             const s = await u_controller.getAccsShortName()
+            if (!s) return sendMessage(chatId, "Sizda accountlar mavjud emas!");
             form[chatId] = {};
             const chunkedAccData = chunkArray(s, 5);
             sendMessage(chatId, "*Akkaunt tanlang:*", {
@@ -210,6 +214,7 @@ bot.on("message", async (msg) => {
             });
         } else if (command === "/hisobla") {
             const s = await u_controller.getAccsShortName()
+            if (!s) return sendMessage(chatId, "Sizda accountlar mavjud emas!");
             const chunkedAccData = chunkArray(s, 5);
             sendMessage(chatId, "Qaysi akkauntni hisoblamoqchisiz?", {
                 reply_markup: {
@@ -325,7 +330,7 @@ bot.on("text", async (msg) => {
     const messageText = msg.text;
     const isNumeric = /^\d+$/.test(messageText);
     const value = messageText.replace(/[^\d.]/g, "");
-    if (ownersChatId?.includes(userId.toString())) {
+    if (ownersChatId?.includes(userId)) {
         if (us?.order === "time" && isNumeric) {
             form[chatId] = { ...form[chatId], time: value, order: "price" };
             sendMessage(
@@ -361,7 +366,7 @@ bot.on("inline_query", (query) => {
     const queryText = query.query;
     const userId = query.from.id;
 
-    if (adminChatIds.includes(userId.toString())) {
+    if (adminChatIds.includes(userId)) {
         if (queryText === "") {
             bot.answerInlineQuery(queryId, []);
         } else {
@@ -408,7 +413,7 @@ bot.on("photo", async (msg) => {
         sendMessage(chatId, "Bu özellik yalnızca özel sohbetlerde kullanılabilir.");
         return;
     }
-    if (ownersChatId.includes(chatId.toString())) {
+    if (ownersChatId.includes(chatId)) {
         adminSetup(
             chatId,
             form,
@@ -462,7 +467,7 @@ bot.on("video_note", (msg) => {
 
 bot.on("video", (msg) => {
     const chatId = msg.chat.id;
-    if (!ownersChatId.includes(chatId.toString())) {
+    if (!ownersChatId.includes(chatId)) {
         if (mode[chatId] === "user_dev") {
             sendMessage(
                 chatId,
@@ -481,7 +486,7 @@ bot.on("voice", (msg) => {
     const chatId = msg.from.id;
     const voice = msg.voice.file_id;
     const isReply = msg.reply_to_message?.text || null;
-    if (ownersChatId.includes(chatId.toString())) {
+    if (ownersChatId.includes(chatId)) {
         if (isReply?.endsWith("yozing.") || isReply?.endsWith("yuboring yoki yozing!")) {
             const user_id = isReply.match(/\d+/)[0];
             sendMessage(

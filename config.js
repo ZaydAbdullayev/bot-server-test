@@ -12,11 +12,9 @@ const createDbConnection = (dbName) => {
                 database: dbName,
                 charset: "utf8mb4",
             },
-            pool: { min: 1, max: 10 }, // Min 1 bağlantı her zaman açık kalsın
+            pool: { min: 1, max: 10 },
         });
-
         console.log(`Yeni bağlantı oluşturuldu: ${dbName}`);
-
         setTimeout(() => {
             if (dbConnections[dbName]) {
                 dbConnections[dbName].destroy();

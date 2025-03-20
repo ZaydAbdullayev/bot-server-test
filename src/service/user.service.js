@@ -152,7 +152,7 @@ WHERE
         const s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0;
     }
-    static async getImgUrl(data, dbName = db_name) {
+    static async getImgUrl(data) {
         return new Promise(async (resolve, reject) => {
             try {
                 const base64Image = data.image.split(";base64,").pop();
@@ -190,7 +190,7 @@ WHERE
         const newurl = this.getImgUrl(data);
         return newurl;
     }
-    static async getAccSalesListById(id) {
+    static async getAccSalesListById(id, dbName = db_name) {
         try {
             const query = `
   SELECT 

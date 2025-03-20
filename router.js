@@ -3,28 +3,19 @@ const controller = require("./src/controller/user.controller");
 const o_controller = require("./src/controller/order.controller");
 const { askCancelChetId, newOrdersChatId } = require("./mocks/security");
 const service = require("./src/service/register.service");
-const { form } = require("./mocks/state");
-const { getDbConnection } = require("./src/service/multi-db.service");
+const path = require("path");
+const statePath = path.join(process.cwd(), 'mocks/state.js');
+const state = require(statePath);
+const { form } = state;
 
 const setupRouterkHandlers = (socket, bot, dbName) => {
     if (!socket) {
         throw new Error("socket or service is not provided correctly.");
     }
-    socket.on("/all", async (data, callback) => {
-        try {
-            const { db_name } = data; // Gelen request'teki db_name'i al
-            const db = await getDbConnection(db_name); // Dinamik olarak bağlan
 
-            const result = await db("accounts").select("*");
-            callback(result);
-        } catch (error) {
-            console.error("Socket DB Error:", error.message);
-            callback({ message: "Internal Server Error", status: 500 });
-        }
-    });
     socket.on(`/all/accs`, async (ds, callback) => {
         try {
-            const result = await controller.getAllAccs(ds);
+            const result = await controller.getAllAccs(dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -32,7 +23,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     });
     socket.on(`/get_acc/byId`, async (id, callback) => {
         try {
-            const result = await controller.getAccById(id);
+            const result = await controller.getAccById(id, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -40,7 +31,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     });
     socket.on(`/reserve/acc`, async (ds, callback) => {
         try {
-            const result = await controller.reserveAcc(ds);
+            const result = await controller.reserveAcc(ds, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -48,7 +39,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     });
     socket.on(`/add_acc`, async (data, callback) => {
         try {
-            const result = await controller.addAcc(data);
+            const result = await controller.addAcc(data, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -56,7 +47,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     });
     socket.on(`/update_acc`, async (data, callback) => {
         try {
-            const result = await controller.updateAcc(data);
+            const result = await controller.updateAcc(data, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -80,7 +71,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     });
     socket.on(`/get-acc/sales-list/byId`, async (id, callback) => {
         try {
-            const result = await controller.getAccSalesListById(id);
+            const result = await controller.getAccSalesListById(id, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -88,7 +79,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     });
     socket.on(`/my-favourites`, async (data, callback) => {
         try {
-            const result = await controller.getFavouriteList(data);
+            const result = await controller.getFavouriteList(data, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -96,7 +87,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     })
     socket.on(`/add-to-fav`, async (data, callback) => {
         try {
-            const result = await controller.addAccFavouriteList(data);
+            const result = await controller.addAccFavouriteList(data, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -104,7 +95,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     })
     socket.on(`/remove-from-fav`, async (data, callback) => {
         try {
-            const result = await controller.removeAccFavouriteList(data);
+            const result = await controller.removeAccFavouriteList(data, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -112,7 +103,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     })
     socket.on(`/get-my-orders`, async (data, callback) => {
         try {
-            const result = await o_controller.getMyOrders(data);
+            const result = await o_controller.getMyOrders(data, dbName);
             callback(result);
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
@@ -121,76 +112,74 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     socket.on(`/web-app-data`, async (inlineData, callback) => {
         try {
             const { chatId, data, username } = JSON.parse(inlineData);
-            console.log("web-app-data", chatId, data, username);
-        
-            // const id = data?.short_name;
-            // const existUser = await service.checkIfRegistered(chatId);
-            // if (existUser) {
-            //     form[chatId] = { id, ...form[chatId], ...data };
-            //     bot.sendMessage(
-            //         chatId,
-            //         `*Endi Admin Buyurtmani Qabul Qilishini Kuting!*`,
-            //         {
-            //             parse_mode: "Markdown",
-            //         }
-            //     );
-            //     const formattedPrice = data?.price
-            //         ?.toString()
-            //         ?.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-            //     bot.sendMessage(
-            //         chatId,
-            //         `*Sizning buyurtmangiz:*\n\n*ACC №:* ${data.acc_name
-            //         } \n*NARX: ${formattedPrice} so'm* \n*START: ${new Date().getFullYear()}.${data.start_date}*\n*VAQTI: ${data.time} ${data.bonus ? ` + ${data.bonus}` : ""}*`,
-            //         { parse_mode: "Markdown" }
-            //     );
+            const id = data?.short_name;
+            const existUser = await service.checkIfRegistered(chatId, dbName);
+            if (existUser) {
+                form[chatId] = { id, ...form[chatId], ...data };
+                bot.sendMessage(
+                    chatId,
+                    `*Endi Admin Buyurtmani Qabul Qilishini Kuting!*`,
+                    {
+                        parse_mode: "Markdown",
+                    }
+                );
+                const formattedPrice = data?.price
+                    ?.toString()
+                    ?.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                bot.sendMessage(
+                    chatId,
+                    `*Sizning buyurtmangiz:*\n\n*ACC №:* ${data.acc_name
+                    } \n*NARX: ${formattedPrice} so'm* \n*START: ${new Date().getFullYear()}.${data.start_date}*\n*VAQTI: ${data.time} ${data.bonus ? ` + ${data.bonus}` : ""}*`,
+                    { parse_mode: "Markdown" }
+                );
 
-            //     const link = `[${username}](tg://user?id=${chatId})`;
-            //     const message = `*Yangi buyurtma №${id}*\n\nACC: ${data.acc_name
-            //         }\nNarxi: ${formattedPrice} so'm\nstart: ${data.start_date}\ndavomiyligi: ${data.time} ${data.bonus ? ` + ${data.bonus}` : ""}\n\n*Buyurtma beruvchi:* ${link} - ${chatId}`;
+                const link = `[${username}](tg://user?id=${chatId})`;
+                const message = `*Yangi buyurtma №${id}*\n\nACC: ${data.acc_name
+                    }\nNarxi: ${formattedPrice} so'm\nstart: ${data.start_date}\ndavomiyligi: ${data.time} ${data.bonus ? ` + ${data.bonus}` : ""}\n\n*Buyurtma beruvchi:* ${link} - ${chatId}`;
 
-            //     const options = {
-            //         reply_markup: {
-            //             inline_keyboard: [
-            //                 [
-            //                     { text: "❌", callback_data: `new_order_reject|${chatId}` },
-            //                     { text: "✅", callback_data: `new_order_accept|${chatId}` },
-            //                 ],
-            //             ],
-            //         },
-            //         parse_mode: "Markdown",
-            //     };
-            //     bot.sendMessage(newOrdersChatId, message, options).then((sentMessage) => {
-            //         const msg_id = sentMessage.message_id;
-            //         bot.editMessageReplyMarkup(
-            //             {
-            //                 inline_keyboard: [
-            //                     [
-            //                         {
-            //                             text: "❌",
-            //                             callback_data: `new_order_reject|${chatId}_${msg_id}`,
-            //                         },
-            //                         {
-            //                             text: "✅",
-            //                             callback_data: `new_order_accept|${chatId}_${msg_id}`,
-            //                         },
-            //                     ],
-            //                 ],
-            //             },
-            //             {
-            //                 chat_id: newOrdersChatId,
-            //                 message_id: msg_id,
-            //             }
-            //         );
-            //     });
-            //     callback({ message: "Success", status: 200 });
-            // } else {
-            //     bot.sendMessage(
-            //         chatId,
-            //         `Iltimos buyurtma berishdan oldin ro'yxatdan o'ting! /start`
-            //     );
-            //     callback({ message: "User not registered", status: 400 });
-            //     console.log("User not registered");
-            // }
+                const options = {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: "❌", callback_data: `new_order_reject|${chatId}` },
+                                { text: "✅", callback_data: `new_order_accept|${chatId}` },
+                            ],
+                        ],
+                    },
+                    parse_mode: "Markdown",
+                };
+                bot.sendMessage(newOrdersChatId, message, options).then((sentMessage) => {
+                    const msg_id = sentMessage.message_id;
+                    bot.editMessageReplyMarkup(
+                        {
+                            inline_keyboard: [
+                                [
+                                    {
+                                        text: "❌",
+                                        callback_data: `new_order_reject|${chatId}_${msg_id}`,
+                                    },
+                                    {
+                                        text: "✅",
+                                        callback_data: `new_order_accept|${chatId}_${msg_id}`,
+                                    },
+                                ],
+                            ],
+                        },
+                        {
+                            chat_id: newOrdersChatId,
+                            message_id: msg_id,
+                        }
+                    );
+                });
+                callback({ message: "Success", status: 200 });
+            } else {
+                bot.sendMessage(
+                    chatId,
+                    `Iltimos buyurtma berishdan oldin ro'yxatdan o'ting! /start`
+                );
+                callback({ message: "User not registered", status: 400 });
+                console.log("User not registered");
+            }
         } catch (error) {
             callback({ message: "Internal Server Error", status: 500 });
             console.log("Error while sending message to admin:", error);
@@ -198,7 +187,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
     })
     socket.on(`/ask-delete/order`, async (id) => {
         try {
-            const result = await o_controller.askDeleteOrder(3, id);
+            const result = await o_controller.askDeleteOrder(3, id, dbName);
             if (result) {
                 const { user_id, acc_id, start_date, start_hour, time, paid } = result[0];
                 try {

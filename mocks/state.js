@@ -11,6 +11,7 @@ let orderMsg = {};
 let bonuses = [];
 let lobby = [];
 let konkurs_data = { ...default_konkurs_data };
+let test_data = {}
 
 
 module.exports = {
@@ -24,5 +25,6 @@ module.exports = {
     orderMsg,
     bonuses,
     lobby,
-    konkurs_data
+    konkurs_data,
+    test_data
 };

@@ -3,11 +3,9 @@ const db = require("./query.service");
 const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 dayjs.extend(utc);
-require('dotenv').config();
 
-const db_name = process.env.DB_NAME;
 class RegisterService {
-    static async checkIfRegistered(userId, dbName = db_name) {
+    static async checkIfRegistered(userId, dbName) {
         const query = "SELECT * FROM users WHERE user_id = ?";
         try {
             const result = await db.dbQuery(dbName, query, [userId]);
@@ -17,7 +15,7 @@ class RegisterService {
             throw error;
         }
     }
-    static async fetchAllUsers(dbName = db_name) {
+    static async fetchAllUsers(dbName) {
         try {
             const query = "SELECT * FROM users";
             const results = await db.dbQuery(dbName, query);
@@ -27,7 +25,7 @@ class RegisterService {
             throw error;
         }
     }
-    static async fetchUserById(id, dbName = db_name) {
+    static async fetchUserById(id, dbName) {
         try {
             const query = "SELECT * FROM users WHERE user_id = ?";
             const result = await db.dbQuery(dbName, query, [id]);
@@ -37,7 +35,27 @@ class RegisterService {
             throw error;
         }
     }
-    static async handleAdminResponse(user, dbName = db_name) {
+    static async getParticipants(dbName) {
+        try {
+            const query = "SELECT * FROM users";
+            const results = await db.dbQuery(dbName, query);
+            return results;
+        } catch (error) {
+            console.error(2);
+            throw error;
+        }
+    };
+    static async addParticipant(userId, dbName) {
+        try {
+            const query = "INSERT INTO participants (user_id) VALUES (?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)";
+            const result = await db.dbQuery(dbName, query, [userId]);
+            return result.affectedRows > 0;
+        } catch (error) {
+            console.error(3);
+            throw error;
+        }
+    }
+    static async handleAdminResponse(user, dbName) {
         try {
             const query = `INSERT INTO users (user_id, name, photo, longitude, latitude, phone, username) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), photo = VALUES(photo), longitude = VALUES(longitude), latitude = VALUES(latitude), phone = VALUES(phone), username = VALUES(username)`;
             const values = [
@@ -57,7 +75,7 @@ class RegisterService {
             console.error(err);
         }
     }
-    static async handleUserResponse(user, action_hour, botmode = null, dbName = db_name) {
+    static async handleUserResponse(user, action_hour, botmode = null, dbName) {
         try {
             const date = user?.start_time?.split(" - ");
             user.start_date = date?.[0];
@@ -66,9 +84,10 @@ class RegisterService {
 
             const data = calculateEndDateTime(user);
 
-            const query = `INSERT INTO acc_orders (user_id, acc_id, paid, time, shablon_id, imgs, start_date, start_hour, end_date, end_hour, mobile_info, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE acc_id = VALUES(acc_id), paid = VALUES(paid), time = VALUES(time), shablon_id = VALUES(shablon_id), imgs = VALUES(imgs), status = VALUES(status), start_date = VALUES(start_date), start_hour = VALUES(start_hour), end_date = VALUES(end_date), end_hour = VALUES(end_hour), mobile_info = VALUES(mobile_info), location = VALUES(location)`;
+            const query = `INSERT INTO acc_orders (user_id, acc_id, paid, time, shablon_id, imgs, status, start_date, start_hour, end_date, end_hour, mobile_info, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE acc_id = VALUES(acc_id), paid = VALUES(paid), time = VALUES(time), shablon_id = VALUES(shablon_id), imgs = VALUES(imgs), status = VALUES(status), start_date = VALUES(start_date), start_hour = VALUES(start_hour), end_date = VALUES(end_date), end_hour = VALUES(end_hour), mobile_info = VALUES(mobile_info), location = VALUES(location)`;
             const imgsValue =
-                user?.imgs && user.imgs.length > 0 ? JSON.stringify(user.imgs) : "[]";
+                user?.imgs && user?.imgs?.length > 0 ? JSON.stringify(user.imgs) : "[]";
+            const status = botmode ? 5 : 0;
 
             const values = [
                 data.user_id,
@@ -77,6 +96,7 @@ class RegisterService {
                 data.time,
                 data.id,
                 imgsValue,
+                status,
                 `${data.start_date} ${data.start_hour}`,
                 data.start_hour,
                 `${data.end_date} ${data.end_hour}`,
@@ -111,9 +131,10 @@ class RegisterService {
             WHERE acc_id = '${data.acc_id}';
       `;
                 // Execute both queries separately
-                const s = await db.createEvent(dbName, `start_timer_${data.id}`, adjustedStartHour, startTimerQuery);
-                const s1 = await db.createEvent(dbName, `end_timer_${data.id}`, adjustedEndHour, endTimerQuery);
-                console.log(s, s1, data.id);
+                if (!botmode) {
+                    await db.createEvent(dbName, `start_timer_${data.id}`, adjustedStartHour, startTimerQuery);
+                }
+                await db.createEvent(dbName, `end_timer_${data.id}`, adjustedEndHour, endTimerQuery);
 
             }
 
@@ -123,17 +144,7 @@ class RegisterService {
             return false;
         }
     }
-    static async updatePaymentStatus(userId, status, dbName = db_name) {
-        try {
-            const query = `UPDATE acc_orders SET status = ? WHERE id = ?`;
-            const values = [status, userId];
-            const result = await db.dbQuery(dbName, query, values);
-            return result.affectedRows > 0;
-        } catch (error) {
-            console.error("Error updating payment status:", error);
-        }
-    }
-    static async calcPriceByAcc(number, dbName = db_name) {
+    static async calcPriceByAcc(number, dbName) {
         try {
             const sql = `SELECT sum(paid) as total_price FROM acc_orders WHERE acc_id = ? AND payment_status = 0`;
             const result = await db.dbQuery(dbName, sql, [number]);
@@ -145,7 +156,7 @@ class RegisterService {
             throw error;
         }
     }
-    static async updatePaymentStatus(acc_id, dbName = db_name) {
+    static async updatePaymentStatus(acc_id, dbName) {
         try {
             const query = `UPDATE acc_orders SET payment_status = 1 WHERE acc_id = ?`;
             const result = await db.dbQuery(dbName, query, [acc_id]);
@@ -155,46 +166,7 @@ class RegisterService {
             throw error;
         }
     }
-    static async getRandomIdsExcludingTop5(dbName = db_name) {
-        try {
-            const top5Query = `
-        SELECT user_id
-        FROM (
-            SELECT acc_id, SUM(paid) AS total_spent
-            FROM acc_orders 
-            WHERE received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) 
-            GROUP BY user_id
-            ORDER BY total_spent DESC 
-            LIMIT 5
-        ) AS top5;
-    `;
-
-            const allIdsQuery = `
-        SELECT user_id, COUNT(*) as count
-        FROM acc_orders 
-        WHERE received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) 
-          AND user_id NOT IN (${top5Query})
-        GROUP BY user_id;
-    `;
-
-            const allIds = await db.dbQuery(dbName, allIdsQuery);
-            const weightedIds = allIds.flatMap((order) => {
-                return new Array(order.count).fill(order.id);
-            });
-            const shuffledIds = weightedIds.sort(() => 0.5 - Math.random());
-            const uniqueSelectedIds = new Set();
-            while (uniqueSelectedIds.size < 5 && shuffledIds.length > 0) {
-                const randomIndex = Math.floor(Math.random() * shuffledIds.length);
-                const selectedId = shuffledIds[randomIndex];
-                uniqueSelectedIds.add(selectedId);
-                shuffledIds.splice(randomIndex, 1); // Remove the selected ID from the array
-            }
-            return Array.from(uniqueSelectedIds);
-        } catch (error) {
-            console.error("Error fetching random IDs:", error);
-        }
-    }
-    static async calcEarnings(type, customTime = {}, dbName = db_name) {
+    static async calcEarnings(type, customTime = {}, dbName) {
         const currentUTCDate = dayjs().utc();
         let startTimestamp, endTimestamp;
 
@@ -295,7 +267,7 @@ ORDER BY
         const finalMessage = `*${capitalizedType.split("_").join(" ")} PROFIT👇*\n\n${others_accs_message}\n➖➖➖➖➖➖➖➖➖➖\n*OTHERS' PROFIT — ${formatPrice(result.others_profit)} so'm👌*\n*MY PROFIT — ${formatPrice(result.my_profit_from_others)} so'm👌*\n*➖➖➖➖➖➖➖➖➖➖*\n${my_accs_message}\n*➖➖➖➖➖➖➖➖➖➖*\n*FROM MY ACCS — ${formatPrice(result.my_profit)} so'm🔥*\n*➖➖➖➖➖➖➖➖➖➖*\n* 💰MINE: ${formatPrice(result.my_profit + result.my_profit_from_others)} so'm✅ *\n* 💰ALL: ${formatPrice(result.total_money_made)} so'm✅*`;
         return finalMessage;
     }
-    static async rankUsersByTotalPayments(dbName = db_name) {
+    static async rankUsersByTotalPayments(dbName) {
         const query = `SELECT user_id, SUM(paid) AS total_spent FROM acc_orders WHERE received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY user_id ORDER BY total_spent DESC LIMIT 5;`;
         try {
             const results = await db.dbQuery(dbName, query);
@@ -310,7 +282,7 @@ ORDER BY
             throw error;
         }
     }
-    static async getRandomIdsExcludingTop5(dbName = db_name) {
+    static async getRandomIdsExcludingTop5(dbName) {
         const top5Query = `
     SELECT user_id
     FROM (
@@ -351,7 +323,7 @@ ORDER BY
             throw error;
         }
     }
-    static async addUserToWinnersList(user, dbName = db_name) {
+    static async addUserToWinnersList(user, dbName) {
         try {
             const query = `INSERT INTO winners (user_id, prize_time, money_spent, rank_user) VALUES (?, ?, ?, ?)`;
             const result = await db.dbQuery(dbName, query, [
@@ -366,7 +338,7 @@ ORDER BY
             throw error;
         }
     }
-    static async fetchWinner(id, dbName = db_name) {
+    static async fetchWinner(id, dbName) {
         try {
             const query = `SELECT * FROM winners WHERE user_id = ? AND status = 0`;
             const result = await db.dbQuery(dbName, query, [id]);
@@ -376,9 +348,9 @@ ORDER BY
             throw error;
         }
     }
-    static async addAcc(acc, id, dbName = db_name) {
+    static async addAcc(acc, id, dbName) {
         const daily_price_list = Object.values(acc.daily_price_list);
-        const query = `INSERT INTO accounts (acc_id, short_name, acc_name, description, video_id, imgs, owner_id, price_list, custom_price_list) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE short_name = VALUES(short_name), acc_name = VALUES(acc_name), description = VALUES(description), video_id = VALUES(video_id), imgs = VALUES(imgs), owner_id = VALUES(owner_id), price_list = VALUES(price_list), custom_price_list = VALUES(custom_price_list)`;
+        const query = `INSERT INTO accounts (acc_id, short_name, acc_name, description, video_id, imgs, owner_id, price_list, custom_price_list, hour_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE short_name = VALUES(short_name), acc_name = VALUES(acc_name), description = VALUES(description), video_id = VALUES(video_id), imgs = VALUES(imgs), owner_id = VALUES(owner_id), price_list = VALUES(price_list), custom_price_list = VALUES(custom_price_list), hour_by = VALUES(hour_by)`;
         const values = [
             id,
             acc.short_name,
@@ -389,6 +361,7 @@ ORDER BY
             acc.owner_id,
             JSON.stringify(acc.price_list),
             JSON.stringify(daily_price_list),
+            acc.hour_by,
         ];
 
         try {

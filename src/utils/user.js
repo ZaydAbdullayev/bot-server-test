@@ -6,20 +6,12 @@ const {
     calculateEndDateTime,
     calcTimeRange,
 } = require("../utils/services");
-const {
-    ownersChatId,
-    closedOrdersChatId,
-    paidChanelId,
-    askCancelChetId,
-    newOrdersChatId,
-    deletedOrdersChatId,
-    mainChannel,
-} = require("../mocks/security");
+const security = require("../mocks/security");
 const tarifs = require("../mocks/mock").tarifs;
 const o_controller = require("../controller/order.controller");
 const db = require("../service/query.service");
 
-const setupOrders = (bot, winners) => {
+const setupOrders = (bot, key) => {
     if (!bot) {
         throw new Error("Bot or service is not provided correctly.");
     }
@@ -32,5 +24,5 @@ const setupOrders = (bot, winners) => {
         sendVideo,
         deleteMessage,
         sendMessageForSuccessUpdate,
-    } = setupSendMessages(bot, winners);
+    } = setupSendMessages(bot, key);
 };

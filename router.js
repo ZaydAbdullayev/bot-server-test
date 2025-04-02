@@ -1,12 +1,9 @@
 const u_service = require("./src/service/user.service");
 const controller = require("./src/controller/user.controller");
 const o_controller = require("./src/controller/order.controller");
-const { askCancelChetId, newOrdersChatId } = require("./mocks/security");
+const security = require("./mocks/security");
 const service = require("./src/service/register.service");
-const path = require("path");
-const statePath = path.join(process.cwd(), 'mocks/state.js');
-const state = require(statePath);
-const { form } = state;
+const { form } = require("./mocks/state");
 
 const setupRouterkHandlers = (socket, bot, dbName) => {
     if (!socket) {
@@ -115,7 +112,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
             const id = data?.short_name;
             const existUser = await service.checkIfRegistered(chatId, dbName);
             if (existUser) {
-                form[chatId] = { id, ...form[chatId], ...data };
+                form[dbName][chatId] = { id, ...form[chatId], ...data };
                 bot.sendMessage(
                     chatId,
                     `*Endi Admin Buyurtmani Qabul Qilishini Kuting!*`,
@@ -148,7 +145,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
                     },
                     parse_mode: "Markdown",
                 };
-                bot.sendMessage(newOrdersChatId, message, options).then((sentMessage) => {
+                bot.sendMessage(security[dbName]?.new_orders_chat_id, message, options).then((sentMessage) => {
                     const msg_id = sentMessage.message_id;
                     bot.editMessageReplyMarkup(
                         {
@@ -166,7 +163,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
                             ],
                         },
                         {
-                            chat_id: newOrdersChatId,
+                            chat_id: security[dbName]?.new_orders_chat_id,
                             message_id: msg_id,
                         }
                     );
@@ -203,7 +200,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
                         parse_mode: "Markdown",
                     }
 
-                    bot.sendMessage(askCancelChetId, msg, options).then((sentMessage) => {
+                    bot.sendMessage(security[dbName]?.ask_cancel_chat_id, msg, options).then((sentMessage) => {
                         const msg_id = sentMessage.message_id;
                         bot.editMessageReplyMarkup(
                             {
@@ -212,7 +209,7 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
                                 ],
                             },
                             {
-                                chat_id: askCancelChetId,
+                                chat_id: security[dbName]?.ask_cancel_chat_id,
                                 message_id: msg_id,
                             }
                         );

@@ -1,11 +1,8 @@
 const db = require("./query.service");
 const { generateId, calculateEndTime, calculateAdjustedTime, is_before } = require("../utils/services");
-const dayjs = require("dayjs");
-require('dotenv').config();
 
-const db_name = process.env.DB_NAME;
 class OrderService {
-    static async getMyOrders(user_id, dbName = db_name) {
+    static async getMyOrders(user_id, dbName) {
         const query = `
     SELECT 
         acc_orders.*, 
@@ -29,7 +26,7 @@ class OrderService {
         return s;
     }
 
-    static async askDeleteOrder(status, id, dbName = db_name) {
+    static async askDeleteOrder(status, id, dbName) {
         const query = `UPDATE acc_orders SET is_deleted = ? WHERE shablon_id = ?`;
         const result = await db.dbQuery(dbName, query, [status, id]);
         let s = JSON.parse(JSON.stringify(result));
@@ -48,7 +45,7 @@ class OrderService {
         return s;
     }
 
-    static async updateOrder(data, id, dbName = db_name) {
+    static async updateOrder(data, id, dbName) {
         const query = `UPDATE acc_orders SET ? WHERE shablon_id = ?`;
         const result = await db.dbQuery(dbName, query, [data, id]);
         let s = JSON.parse(JSON.stringify(result));
@@ -62,7 +59,7 @@ class OrderService {
         return s;
     }
 
-    static async updateFullOrder(data, id, dbName = db_name) {
+    static async updateFullOrder(data, id, dbName) {
         const query = `SELECT * FROM acc_orders WHERE shablon_id = ?`;
         const u_query = `UPDATE acc_orders SET ? WHERE shablon_id = ?`;
         const u_a_query = `UPDATE accounts SET status = 0 WHERE acc_id = ?`;
@@ -79,7 +76,7 @@ class OrderService {
     }
 
 
-    static async createOrUpdateEvent(type, data, id, dbName = db_name) {
+    static async createOrUpdateEvent(type, data, id, dbName) {
         const adjustedStartHour = calculateAdjustedTime(data.start_date?.split("T")[0], data.start_hour, 4);
         const adjustedEndHour = calculateAdjustedTime(data.end_date?.split("T")[0], data.end_hour, 4);
         let result = false;
@@ -125,7 +122,7 @@ class OrderService {
         }
     }
 
-    static async createDiscount(data, dbName = db_name) {
+    static async createDiscount(data, dbName) {
         data.discount_id = generateId();
         const query = `INSERT INTO discount (discount_id, amount, deedline, end_time, status) VALUES (?, ?, ?, ?, 1)`;
         const { for_event, for_sql } = calculateEndTime(data.deedline);
@@ -145,21 +142,21 @@ class OrderService {
         }
     }
 
-    static async getActiveDiscounts(dbName = db_name) {
+    static async getActiveDiscounts(dbName) {
         const query = `SELECT * FROM discount WHERE status = 1;`;
         const result = await db.dbQuery(dbName, query);
         let s = JSON.parse(JSON.stringify(result));
         return s;
     }
 
-    static async deleteDiscount(discountId, dbName = db_name) {
+    static async deleteDiscount(discountId, dbName) {
         const query = `UPDATE discount SET status = 0 WHERE discount_id = ?`;
         const result = await db.dbQuery(dbName, query, [discountId]);
         let s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0;
     }
 
-    static async createBonus(data, dbName = db_name) {
+    static async createBonus(data, dbName) {
         const query = `INSERT INTO bonus (collection_name, tarif, amount, deadline, end_time, status) VALUES (?, ?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE deadline = VALUES(deadline), end_time = VALUES(end_time), status = 1`;
         const { for_sql, for_event } = calculateEndTime(data.deedline);
 
@@ -173,7 +170,7 @@ class OrderService {
         }
     }
 
-    static async getActiveBonuses(dbName = db_name) {
+    static async getActiveBonuses(dbName) {
         const query = `SELECT * FROM bonus WHERE status = 1;`;
         const result = await db.dbQuery(dbName, query);
         let s = JSON.parse(JSON.stringify(result));
@@ -189,7 +186,7 @@ class OrderService {
         return { group_data: groupedResults, data: s };
     }
 
-    static async getBonusesList(dbName = db_name) {
+    static async getBonusesList(dbName) {
         const query = `SELECT * FROM bonus`;
         const result = await db.dbQuery(dbName, query);
         let s = JSON.parse(JSON.stringify(result));
@@ -205,14 +202,14 @@ class OrderService {
         return groupedResults;
     }
 
-    static async passiveBonus(tarif, dbName = db_name) {
+    static async passiveBonus(tarif, dbName) {
         const query = `UPDATE bonus SET status = 0 WHERE collection_name = ?`;
         const result = await db.dbQuery(dbName, query, [tarif]);
         let s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0;
     }
 
-    static async activateBonus(collection_name, deadline, dbName = db_name) {
+    static async activateBonus(collection_name, deadline, dbName) {
         const { for_event, for_sql } = calculateEndTime(deadline);
         const query = `UPDATE bonus SET status = 1, deadline = ?, end_time = ? WHERE collection_name = ?`;
         try {
@@ -232,7 +229,7 @@ class OrderService {
 
     }
 
-    static async deleteBonus(collection_name, dbName = db_name) {
+    static async deleteBonus(collection_name, dbName) {
         const query = `DELETE FROM bonus WHERE collection_name = ?`;
         const result = await db.dbQuery(dbName, query, [collection_name]);
         let s = JSON.parse(JSON.stringify(result));

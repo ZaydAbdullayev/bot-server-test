@@ -7,13 +7,11 @@ const calculateAdjustedTime = (date, time, hoursOffset) => {
     const adjustedTime = inputTime.isBefore(currentTime) ? currentTime : inputTime;
     return adjustedTime.subtract(hoursOffset, 'hour').format('YYYY-MM-DD HH:mm:ss');
 };
-
 const is_before = (date) => {
     const inputTime = dayjs(date);
     const currentTime = dayjs().add(4, 'hour');
     return inputTime.isBefore(currentTime);
 }
-
 const convertToTimeFormat = (value) => {
     const num = parseFloat(value);
     if (num >= 24) {
@@ -35,7 +33,6 @@ const convertToTimeFormat = (value) => {
         return `${hours} soat ${minutes} minut`;
     }
 };
-
 const chunkArray = (array, size) => {
     const chunkedArray = [];
     for (let i = 0; i < array.length; i += size) {
@@ -43,14 +40,12 @@ const chunkArray = (array, size) => {
     }
     return chunkedArray;
 };
-
 const generateId = () => {
     const min = 100000;
     const max = 999999;
     const uniqueNumber = Math.floor(min + Math.random() * (max - min + 1));
     return uniqueNumber.toString();
 };
-
 const filePathCache = {};
 const getImgPathLink = async (fileId) => {
     if (filePathCache[fileId]) {
@@ -64,7 +59,6 @@ const getImgPathLink = async (fileId) => {
     filePathCache[fileId] = filePath;
     return filePath;
 };
-
 const parseTextSimple = (text) => {
     const result = {};
     const cleanedText = text.split("/acc_info")[1].trim();
@@ -102,7 +96,6 @@ const parseTextSimple = (text) => {
 
     return result;
 };
-
 const calculateEndDateTime = (obj) => {
     const startDate = new Date(obj.start_date);
     const [hours, minutes] = obj.start_hour.split(":").map(Number);
@@ -122,7 +115,6 @@ const calculateEndDateTime = (obj) => {
         end_hour: formatTime(endDate),
     };
 };
-
 const calcTimeRange = (inputTime, manual = false) => {
     let [hour, minute] = inputTime.split(":").map(Number);
     if (manual) {
@@ -139,7 +131,6 @@ const calcTimeRange = (inputTime, manual = false) => {
     action_hour = `${actionDate.getHours()}:${actionDate.getMinutes().toString().padStart(2, "0")}`;
     return { start_hour, action_hour };
 };
-
 const addTime = (hours) => {
     const newDate = new Date();
     newDate.setHours(newDate.getHours() + hours);

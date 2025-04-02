@@ -3,7 +3,6 @@ const createDbConnection = require("../../config");
 class QueryService {
     static async dbQuery(dbName, query, values = []) {
         const db = createDbConnection(dbName); // Dinamik bağlantı oluştur
-
         try {
             const result = await db.raw(query, values);
             return result[0];
@@ -18,10 +17,10 @@ class QueryService {
 
         try {
             // Önce varsa eski eventi sil
-            await db.raw(`DROP EVENT IF EXISTS ${eventName};`);
+            await db.raw(`DROP EVENT IF EXISTS \`${eventName}\`;`);
 
             const eventQuery = `
-            CREATE EVENT ${eventName}
+            CREATE EVENT \`${eventName}\`
             ON SCHEDULE AT '${scheduleTime}'
             DO 
             BEGIN 
@@ -36,6 +35,7 @@ class QueryService {
             return { msg: `Error creating event ${eventName}: ${err}`, success: false };
         }
     }
+
 
 
     static async dropEvent(dbName, eventName) {

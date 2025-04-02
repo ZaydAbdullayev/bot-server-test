@@ -1,33 +1,26 @@
 const { setupSendMessages } = require("./response");
 const service = require("../service/register.service");
-const {
-    ownersChatId,
-    deletedOrdersChatId,
-} = require("../../mocks/security");
-const path = require("path");
-const statePath = path.join(process.cwd(), 'mocks/state.js');
-const state = require(statePath);
-const { winners, konkurs_data } = state;
+const security = require("../../mocks/security");
+const { winners, konkurs_data } = require("../../mocks/state");
 const default_konkurs_data = require("../../mocks/mock").default_konkurs_data;
 const u_controller = require("../controller/user.controller");
 const db = require("../service/query.service");
 const dayjs = require("dayjs");
-require("dotenv").config();
 
-const dbName = process.env.DB_NAME;
 
-const setupExtras = (bot) => {
+const setupExtras = (bot, key) => {
+    const dbName = key;
     if (!bot) {
         throw new Error("Bot or service is not provided correctly.");
     }
     const {
         sendMessage,
         deleteMessage,
-    } = setupSendMessages(bot);
+    } = setupSendMessages(bot, key);
 
     const create_konkurs = async (callbackQuery) => {
         const chatId = callbackQuery.from.id;
-        if (ownersChatId.includes(chatId)) {
+        if (security[key]?.owners_chat_id.includes(chatId)) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Konkurs yaratish boshlatildi!",
                 show_alert: false,
@@ -38,7 +31,7 @@ const setupExtras = (bot) => {
                 })
                 .then((sentMessage) => {
                     bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
-                        konkurs_data.text = reply.text;
+                        konkurs_data[key].text = reply.text;
                         await bot.sendMessage(chatId, "Konkurs matni saqlandi ✅");
                         bot
                             .sendMessage(chatId, "Tugma uchun matnni shu habarga javoban yozing:", {
@@ -46,7 +39,7 @@ const setupExtras = (bot) => {
                             })
                             .then((sentMessage) => {
                                 bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
-                                    konkurs_data.button_text = reply.text;
+                                    konkurs_data[key].button_text = reply.text;
                                     await bot.sendMessage(chatId, "Tugma matni saqlandi ✅");
                                     bot
                                         .sendMessage(chatId, "Goliblar sonini su habarga javoban yozing", {
@@ -54,7 +47,7 @@ const setupExtras = (bot) => {
                                         })
                                         .then((sentMessage) => {
                                             bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
-                                                konkurs_data.winners_count = reply.text.replace(/\D/g, '');
+                                                konkurs_data[key].winners_count = reply.text.replace(/\D/g, '');
                                                 await bot.sendMessage(chatId, "Goliblar soni saqlandi ✅");
                                                 bot
                                                     .sendMessage(chatId, "Konkurs bashlanish vaxtini (oy,kun soat:minut) formatida kiriting kiriting:\n *va agar konkurs konkurs habari kanalga jo'natishi bilan boshlanishini hohlasangiz `now` so'zini yozing*", {
@@ -64,10 +57,10 @@ const setupExtras = (bot) => {
                                                     .then((sentMessage) => {
                                                         bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
                                                             const today = dayjs().format("YYYY-MM-DD HH:mm:ss");
-                                                            konkurs_data.start_time = reply.text === "now" ? today : dayjs(reply.text).format("YYYY-MM-DD HH:mm:ss");
-                                                            konkurs_data.end_time = today;
+                                                            konkurs_data[key].start_time = reply.text === "now" ? today : dayjs(reply.text).format("YYYY-MM-DD HH:mm:ss");
+                                                            konkurs_data[key].end_time = today;
                                                             await bot.sendMessage(chatId, "Boshlanish vaqti saqlandi ✅");
-                                                            const s = await u_controller.addKonkurs(konkurs_data);
+                                                            const s = await u_controller.addKonkurs(konkurs_data[key], key);
                                                             if (!s) return bot.sendMessage(chatId, `Konkursni malumotlarini saqlashda kutilmagan xatolik yuz berdi ❌\nIltimos qaytadan urinib ko'ring /free`);
                                                             const options = {
                                                                 reply_markup: {
@@ -122,8 +115,8 @@ const setupExtras = (bot) => {
             })
             .then((sentMessage) => {
                 bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
-                    konkurs_data.end_by_user_count = reply.text.replace(/\D/g, '') || 3;
-                    const s = await u_controller.updateKonkurs({ end_by_user_count: reply.text.replace(/\D/g, '') }, 0);
+                    konkurs_data[key].end_by_user_count = reply.text.replace(/\D/g, '') || 3;
+                    const s = await u_controller.updateKonkurs({ end_by_user_count: reply.text.replace(/\D/g, '') }, 0, key);
                     if (!s) return bot.sendMessage(chatId, `Konkursni malumotlarini saqlashda kutilmagan xatolik yuz berdi ❌\nIltimos qaytadan urinib ko'ring /free`);
                     await bot.sendMessage(chatId, "Konkursni tugatish usuli saqlandi ✅");
                     const options = {
@@ -154,13 +147,13 @@ const setupExtras = (bot) => {
                     const options_konkurs = {
                         reply_markup: {
                             inline_keyboard: [
-                                [{ text: konkurs_data.button_text, callback_data: `join_to_konkurs|counter` }],
+                                [{ text: konkurs_data[key].button_text, callback_data: `join_to_konkurs|counter` }],
                             ],
                         },
                         parse_mode: "Markdown",
                     };
-                    await sendMessage(chatId, konkurs_data.text, options_konkurs)
-                    sendMessage(chatId, `Iltimos konkurs malumotlarini tekshiring:\n\nG'liblar soni: ${konkurs_data.winners_count}\n\nBoshlanish vaqti: ${konkurs_data.start_time}\n\nTugatish usuli:\nQatnashuvchi soni ${reply.text} taga yetganida`, options)
+                    await sendMessage(chatId, konkurs_data[key].text, options_konkurs)
+                    sendMessage(chatId, `Iltimos konkurs malumotlarini tekshiring:\n\nG'liblar soni: ${konkurs_data[key].winners_count}\n\nBoshlanish vaqti: ${konkurs_data[key].start_time}\n\nTugatish usuli:\nQatnashuvchi soni ${reply.text} taga yetganida`, options)
                 });
             });
     };
@@ -181,7 +174,7 @@ const setupExtras = (bot) => {
             show_alert: false,
         });
         bot
-            .sendMessage(chatId, "Konkurs davomiyligini shu habarga javoban raqamlar bilan yozing masalan (12/24/48):", {
+            .sendMessage(chatId, "Konkurs (soat) davomiyligini shu habarga javoban raqamlar bilan yozing masalan (12/24/48):", {
                 reply_markup: { force_reply: true },
             })
             .then((sentMessage) => {
@@ -189,10 +182,10 @@ const setupExtras = (bot) => {
                     const deadline = reply.text.replace(/\D/g, '');
                     const start_time = dayjs().format("YYYY-MM-DD HH:mm:ss");
                     const end_time = dayjs().add(deadline, 'hour').format("YYYY-MM-DD HH:mm:ss");
-                    konkurs_data.end_deadline = deadline;
-                    konkurs_data.start_time = start_time;
-                    konkurs_data.end_time = end_time;
-                    const s = await u_controller.updateKonkurs({ end_deadline: deadline, start_time, end_time }, 0);
+                    konkurs_data[key].end_deadline = deadline;
+                    konkurs_data[key].start_time = start_time;
+                    konkurs_data[key].end_time = end_time;
+                    const s = await u_controller.updateKonkurs({ end_deadline: deadline, start_time, end_time }, 0, key);
                     if (!s) return bot.sendMessage(chatId, `Konkursni malumotlarini saqlashda kutilmagan xatolik yuz berdi ❌\nIltimos qaytadan urinib ko'ring /free`);
                     await bot.sendMessage(chatId, "Konkursni tugatish usuli saqlandi ✅");
                     const options = {
@@ -223,13 +216,13 @@ const setupExtras = (bot) => {
                     const options_konkurs = {
                         reply_markup: {
                             inline_keyboard: [
-                                [{ text: konkurs_data.button_text, callback_data: `join_to_konkurs|counter` }],
+                                [{ text: konkurs_data[key].button_text, callback_data: `join_to_konkurs|counter` }],
                             ],
                         },
                         parse_mode: "Markdown",
                     };
-                    await sendMessage(chatId, konkurs_data.text, options_konkurs)
-                    sendMessage(chatId, `Iltimos konkurs malumotlarini tekshiring:\n\nG'liblar soni: ${konkurs_data.winners_count}\n\nBoshlanish vaqti: ${konkurs_data.start_time}\n\nTugatish usuli:\n${reply.text} soatdan keyin`, options)
+                    await sendMessage(chatId, konkurs_data[key].text, options_konkurs)
+                    sendMessage(chatId, `Iltimos konkurs malumotlarini tekshiring:\n\nG'liblar soni: ${konkurs_data[key].winners_count}\n\nBoshlanish vaqti: ${konkurs_data[key].start_time}\n\nTugatish usuli:\n${reply.text} soatdan keyin`, options)
                 });
             });
     }
@@ -247,8 +240,8 @@ const setupExtras = (bot) => {
         );
         bot.sendMessage(chatId, "Konkurs nomini shu habarga javoban yozing:", { reply_markup: { force_reply: true }, }).then((sentMessage) => {
             bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
-                konkurs_data.name = reply.text;
-                const s = await u_controller.updateKonkurs({ name: reply.text, status: 1 }, 0);
+                konkurs_data[key].name = reply.text;
+                const s = await u_controller.updateKonkurs({ name: reply.text, status: 1 }, 0, key);
                 if (!s) {
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: "Konkurs malumotlarini saqlashda kutilmagan hatolik yuz berdi ❌. Iltimos qayta urinib ko'ring",
@@ -262,7 +255,7 @@ const setupExtras = (bot) => {
                 await sendMessage(chatId, "Konkurs muvoffaqiyatli saqlandi ✅", {
                     reply_to_message_id: sentMessage.message_id,
                 });
-                konkurs_data = default_konkurs_data;
+                konkurs_data[key] = default_konkurs_data;
             });
         });
 
@@ -287,7 +280,7 @@ const setupExtras = (bot) => {
         sendMessage(chatId, "Konkurs bekor qilindi!", {
             reply_to_message_id: message_id,
         });
-        konkurs_data = default_konkurs_data;
+        konkurs_data[key] = default_konkurs_data;
     };
     const accept_send_konkurs = async (callbackQuery, type) => {
         const chatId = callbackQuery.from.id;
@@ -303,11 +296,11 @@ const setupExtras = (bot) => {
         );
         bot.sendMessage(chatId, "Konkurs nomini shu habarga javoban yozing:", { reply_markup: { force_reply: true }, }).then((sentMessage) => {
             bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
-                konkurs_data.name = reply.text;
-                const s = await u_controller.updateKonkurs({ name: reply.text, status: 2 }, 0);
+                konkurs_data[key].name = reply.text;
+                const s = await u_controller.updateKonkurs({ name: reply.text, status: 2 }, 0, key);
                 if (type === "timer") {
                     const timerSql = `UPDATE konkurs SET status = 1 WHERE name = '${reply.text}';`;
-                    const endTime = dayjs(konkurs_data.end_time).subtract(4, 'hour').format("YYYY-MM-DD HH:mm:ss");
+                    const endTime = dayjs(konkurs_data[key].end_time).subtract(4, 'hour').format("YYYY-MM-DD HH:mm:ss");
                     await db.createEvent(dbName, reply.text, endTime, timerSql)
                 }
 
@@ -320,25 +313,25 @@ const setupExtras = (bot) => {
                 const options = {
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: konkurs_data.button_text, callback_data: `join_to_konkurs|${type}&${reply.text}` }],
+                            [{ text: konkurs_data[key].button_text, callback_data: `join_to_konkurs|${type}&${reply.text}` }],
                         ],
                     },
                     parse_mode: "Markdown",
                 };
-                await sendMessage(deletedOrdersChatId, konkurs_data.text, options);
+                await sendMessage(security[key].deleted_orders_chat_id, konkurs_data[key].text, options);
                 sendMessage(chatId, "Konkurs saqlandi va Kanalga yuborildi!", {
                     reply_to_message_id: message_id,
                 });
-                Object.assign(konkurs_data, default_konkurs_data);
+                Object.assign(konkurs_data[key], default_konkurs_data);
             });
         });
     };
     const join_to_konkurs = async (callbackQuery, dinamic) => {
         const chatId = callbackQuery.from.id;
-        const existUser = await service.checkIfRegistered(chatId);
+        const existUser = await service.checkIfRegistered(chatId, key);
         if (existUser) {
             const [endType, name] = dinamic.split("&");
-            const konkurs = await u_controller.getContestant(name);
+            const konkurs = await u_controller.getContestant(name, key);
 
             const contestant = JSON.parse(konkurs.contestant);
             if (contestant.includes(chatId) && konkurs.status === 2) {
@@ -359,7 +352,7 @@ const setupExtras = (bot) => {
                     return;
                 } else {
                     contestant.push(chatId);
-                    const s = await u_controller.updateKonkurs({ contestant: JSON.stringify(contestant) }, 2);
+                    const s = await u_controller.updateKonkurs({ contestant: JSON.stringify(contestant) }, 2, key);
                     if (!s) {
                         bot.answerCallbackQuery(callbackQuery.id, {
                             text: "Konkursga qo'shilishda xatolik yuz berdi ❌",
@@ -376,7 +369,7 @@ const setupExtras = (bot) => {
                     return;
                 } else {
                     contestant.push(chatId);
-                    const s = await u_controller.updateKonkurs({ contestant: JSON.stringify(contestant) }, 2);
+                    const s = await u_controller.updateKonkurs({ contestant: JSON.stringify(contestant) }, 2, key);
                     if (!s) {
                         bot.answerCallbackQuery(callbackQuery.id, {
                             text: "Konkursga qo'shilishda xatolik yuz berdi ❌",
@@ -391,20 +384,20 @@ const setupExtras = (bot) => {
             });
         } else {
             bot.answerCallbackQuery(callbackQuery.id, {
-                text: "Qatnashish uchun @ATOMIC_RENT_BOT dan ro'yxatdan o'ting!",
+                text: `Qatnashish uchun ${security[key].bot_username} dan ro'yxatdan o'ting!`,
                 show_alert: true,
             });
         }
     };
     const top5 = async (callbackQuery) => {
         const chatId = callbackQuery.from.id;
-        const top5 = await service.rankUsersByTotalPayments();
+        const top5 = await service.rankUsersByTotalPayments(key);
         if (!top5.length) {
             sendMessage(chatId, "Foydalanuvchilar topilmadi.");
         } else {
             const message = top5.map((user, index) => {
                 const link = `[${user?.user_id}](tg://user?id=${user.user_id})`;
-                winners[user?.user_id] = user;
+                winners[key][user?.user_id] = user;
                 return `${index + 1}. ID: ${link} - ${user?.total_spent} so'm`;
             });
             const options = {
@@ -435,13 +428,13 @@ const setupExtras = (bot) => {
     };
     const random = async (callbackQuery) => {
         const chatId = callbackQuery.from.id;
-        const randomWinners = await service.getRandomIdsExcludingTop5();
+        const randomWinners = await service.getRandomIdsExcludingTop5(key);
         if (!randomWinners.length) {
             sendMessage(chatId, "Foydalanuvchilar topilmadi.");
         } else {
             const message = randomWinners.map((user, index) => {
                 const link = `[${user}](tg://user?id=${user})`;
-                winners[user] = { user_id: user };
+                winners[key][user] = { user_id: user };
                 return `${index + 1}. ID: ${link}`;
             });
             const options = {
@@ -473,7 +466,7 @@ const setupExtras = (bot) => {
     const create_lobby = async (callbackQuery) => {
         let lobby = {}
         const chatId = callbackQuery.from.id;
-        if (ownersChatId.includes(chatId)) {
+        if (security[key]?.owners_chat_id.includes(chatId)) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Lobby yaratish boshlatildi!",
                 show_alert: false,
@@ -569,13 +562,13 @@ const setupExtras = (bot) => {
                 inline_keyboard: [
                     [{
                         text: button_text,
-                        url: `https://t.me/satoshkin_meetup_bot?start=joinlobby_${end_time}`,
+                        url: `https://t.me/${security[key].bot_username?.split("@")[1]}?start=joinlobby_${end_time}`,
                     }]
                 ],
             },
             parse_mode: "Markdown",
         };
-        await sendMessage(deletedOrdersChatId, text, options);
+        await sendMessage(security[key]?.deleted_orders_chat_id, text, options);
         sendMessage(chatId, `Lobby kanalga yuborildi ✅`,)
     }
     const reject_lobby = async (callbackQuery) => {
@@ -599,6 +592,82 @@ const setupExtras = (bot) => {
             reply_to_message_id: message_id,
         });
     }
+    const my_konkurs = async (callbackQuery) => {
+        const chatId = callbackQuery.from.id;
+        const my_konkurs = await u_controller.getMyKonkurs(key);
+        if (!my_konkurs.length) {
+            bot.answerCallbackQuery(callbackQuery.id, {
+                text: "Sizda hali hech qanday konkurs mavjud emas!",
+                show_alert: true,
+            });
+            return;
+        }
+        bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Konkurslar ro'yxati tayyorlandi!",
+            show_alert: false,
+        });
+
+        my_konkurs.forEach((konkurs) => {
+            const options = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: konkurs.status === 1 ? `✅ ON` : `❌ OFF`, callback_data: `update_konkurs|${konkurs.name}_${konkurs.status === 1 ? 2 : 1}` }],
+                        [{ text: "🗑 O'shirish", callback_data: `delete_konkurs|${konkurs.name}` }],
+                    ],
+                },
+                parse_mode: "Markdown",
+            };
+            setTimeout(() => {
+                sendMessage(chatId, `*${konkurs.name}*`, options);
+            }, 1000);
+        });
+    }
+    const update_konkurs = async (callbackQuery, dinamic) => {
+        const chatId = callbackQuery.from.id;
+        const msg_id = callbackQuery.message.message_id;
+        const [name, status] = dinamic.split("_");
+        const s = await u_controller.updateKonkursStatus(name, status, key);
+        if (!s) {
+            bot.answerCallbackQuery(callbackQuery.id, {
+                text: "Konkursni yangilashda xatolik yuz berdi ❌",
+                show_alert: true,
+            });
+        }
+        bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Konkurs muvoffaqiyatli yangilandi!",
+            show_alert: false,
+        });
+
+        bot.editMessageReplyMarkup(
+            {
+                inline_keyboard: [
+                    [{ text: status === "1" ? `✅ ON` : `❌ OFF`, callback_data: `update_konkurs|${name}_${status === "1" ? 2 : 1}` }],
+                    [{ text: "🗑 O'shirish", callback_data: `delete_konkurs|${name}` }],
+                ],
+            },
+            {
+                chat_id: chatId,
+                message_id: msg_id,
+            }
+        );
+
+    }
+    const delete_konkurs = async (callbackQuery, name) => {
+        const chatId = callbackQuery.from.id;
+        const msg_id = callbackQuery.message.message_id;
+        const s = await u_controller.deleteKonkurs(name, key);
+        if (!s) {
+            bot.answerCallbackQuery(callbackQuery.id, {
+                text: "Konkursni o'chirishda xatolik yuz berdi ❌",
+                show_alert: true,
+            });
+        }
+        bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Konkurs o'chirildi!",
+            show_alert: true,
+        });
+        bot.deleteMessage(chatId, msg_id);
+    }
 
     return {
         create_konkurs,
@@ -612,7 +681,10 @@ const setupExtras = (bot) => {
         by_deadline,
         create_lobby,
         send_lobby,
-        reject_lobby
+        reject_lobby,
+        my_konkurs,
+        update_konkurs,
+        delete_konkurs,
     };
 };
 

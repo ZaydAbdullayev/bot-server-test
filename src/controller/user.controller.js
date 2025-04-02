@@ -39,9 +39,9 @@ class UserController {
             return { error: error.message };
         }
     }
-    async getAccsShortName() {
+    async getAccsShortName(dbName) {
         try {
-            const result = await service.getAccsShortName();
+            const result = await service.getAccsShortName(dbName);
             return result;
         } catch (error) {
             return { error: error.message };
@@ -99,25 +99,49 @@ class UserController {
             return { error: error.message };
         }
     }
-    async addKonkurs(konkursData) {
+    async addKonkurs(konkursData, dbName) {
         try {
-            const data = await service.addKonkurs(konkursData);
+            const data = await service.addKonkurs(konkursData, dbName);
             return data;
         } catch (error) {
             return { error: error.message };
         }
     }
-    async updateKonkurs(value, status) {
+    async updateKonkurs(value, status, dbName) {
         try {
-            const data = await service.updateKonkurs(value, status);
+            const data = await service.updateKonkurs(value, status, dbName);
             return data;
         } catch (error) {
             return { error: error.message };
         }
     }
-    async getContestant(name) {
+    async getContestant(name, dbName) {
         try {
-            const data = await service.getContestant(name);
+            const data = await service.getContestant(name, dbName);
+            return data;
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
+    async getMyKonkurs(dbName) {
+        try {
+            const data = await service.getKonkurs(dbName);
+            return data;
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
+    async updateKonkursStatus(name, status, dbName) {
+        try {
+            const data = await service.updateKonkursStatus(name, status, dbName);
+            return data;
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
+    async deleteKonkurs(name, dbName) { 
+        try {
+            const data = await service.deleteKonkurs(name, dbName);
             return data;
         } catch (error) {
             return { error: error.message };

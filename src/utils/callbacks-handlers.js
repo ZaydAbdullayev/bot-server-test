@@ -1,23 +1,17 @@
 const { setupSendMessages } = require("./response");
 const service = require("../service/register.service");
 const { calcTimeRange } = require("../utils/services");
-const path = require("path");
-const statePath = path.join(process.cwd(), 'mocks/state.js');
-const state = require(statePath);
-const {
-    ownersChatId,
-} = require("../../mocks/security");
+const security = require("../../mocks/security");
 const tarifs = require("../../mocks/mock").tarifs;
 const o_controller = require("../controller/order.controller");
 const db = require("../service/query.service");
 const { setupExtras } = require("./extras");
 const { setupOrders } = require("./order");
 const { setupReports } = require("./report-handlers");
-const { bonuses, winners } = state;
-require("dotenv").config();
+const { bonuses, winners } = require("../../mocks/state");
 
-const dbName = process.env.DB_NAME;
-const setupCallbackHandlers = (bot) => {
+const setupCallbackHandlers = (bot, key) => {
+    const dbName = key;
     if (!bot) {
         throw new Error("Bot or service is not provided correctly.");
     }
@@ -26,7 +20,7 @@ const setupCallbackHandlers = (bot) => {
         sendMessage,
         sendVideo,
         deleteMessage,
-    } = setupSendMessages(bot);
+    } = setupSendMessages(bot, key);
 
     const accept_rules = async (callbackQuery) => {
         const userId = callbackQuery.from.id;
@@ -66,7 +60,7 @@ const setupCallbackHandlers = (bot) => {
     };
     const register_user = async (callbackQuery) => {
         const userId = callbackQuery.from.id;
-        const existUser = await service.checkIfRegistered(userId);
+        const existUser = await service.checkIfRegistered(userId, key);
         if (existUser) {
             return await bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Siz allaqachon ro'yxatdan o'tgansiz!",
@@ -126,7 +120,7 @@ const setupCallbackHandlers = (bot) => {
                 show_alert: true,
             });
         } else {
-            const ids = Object.values(winners)
+            const ids = Object.values(winners[key])
                 .sort((a, b) => a?.rank - b?.rank)
                 .map((item) => item?.user_id);
             const message = ids.map((user, index) => {
@@ -237,7 +231,7 @@ const setupCallbackHandlers = (bot) => {
                 message_id: message_id,
             });
 
-        const discounts = await o_controller.getDiscounts();
+        const discounts = await o_controller.getDiscounts(key);
         if (discounts.length > 0) {
             const options = {
                 reply_markup: {
@@ -258,7 +252,7 @@ const setupCallbackHandlers = (bot) => {
         const chatId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
         const discount_id = dinamic;
-        const s = await o_controller.deleteDiscount(discount_id);
+        const s = await o_controller.deleteDiscount(discount_id, key);
         if (s) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Chegirma bekor qilindi!",
@@ -281,10 +275,10 @@ const setupCallbackHandlers = (bot) => {
     const accept_discount = async (callbackQuery, dinamic) => {
         const userId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
-        if (ownersChatId.includes(userId)) {
+        if (security[key]?.owners_chat_id.includes(userId)) {
             const [amount, deedline] = dinamic?.split("_");
             const values = { amount, deedline }
-            const s = await o_controller.createDiscount(values);
+            const s = await o_controller.createDiscount(values, key);
             if (s) {
                 bot.answerCallbackQuery(callbackQuery.id, {
                     text: "Chegirma e'lon qilindi!",
@@ -365,7 +359,7 @@ const setupCallbackHandlers = (bot) => {
                 message_id: message_id,
             });
 
-        const { group_data: bonuses } = await o_controller.getActiveBonuses();
+        const { group_data: bonuses } = await o_controller.getActiveBonuses(key);
         if (bonuses.length > 0) {
             bonuses.map((bonus) => {
                 const details = bonus.map((item) => {
@@ -392,7 +386,7 @@ const setupCallbackHandlers = (bot) => {
         const chatId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
         const tarif = dinamic;
-        const s = await o_controller.passiveBonus(tarif);
+        const s = await o_controller.passiveBonus(tarif, key);
         if (s) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Bonus bekor qilindi!",
@@ -415,7 +409,7 @@ const setupCallbackHandlers = (bot) => {
     const delete_bonus = async (callbackQuery, dinamic) => {
         const chatId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
-        const s = await o_controller.deleteBonus(dinamic);
+        const s = await o_controller.deleteBonus(dinamic, key);
         if (s) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "Bonus Paketi o'chirildi!",
@@ -448,8 +442,8 @@ const setupCallbackHandlers = (bot) => {
             }
         ).then((sentMessage) => {
             bot.onReplyToMessage(chatId, sentMessage.message_id, async (reply) => {
-                bonuses = [...bonuses, { tarif: dinamic, amount: reply.text }];
-                const done_text = bonuses.map((bonus) => `${bonus.tarif}&${bonus.amount}`).join("_");
+                bonuses[key] = [...bonuses[key], { tarif: dinamic, amount: reply.text }];
+                const done_text = bonuses[key]?.map((bonus) => `${bonus.tarif}&${bonus.amount}`).join("_");
                 const options = {
                     reply_markup: {
                         inline_keyboard: [
@@ -531,7 +525,7 @@ const setupCallbackHandlers = (bot) => {
     const accept_bonus = async (callbackQuery, dinamic) => {
         const userId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
-        if (ownersChatId.includes(userId)) {
+        if (security[key]?.owners_chat_id.includes(userId)) {
             const ids = callbackQuery.message.text.split("\n")[0].split(": ")[1];
             const bonuses = ids.split(",");
             let tarifs_text = "";
@@ -541,7 +535,7 @@ const setupCallbackHandlers = (bot) => {
                 const [tarif, amount] = bonuses[i].split("101");
                 tarifs_text += `${tarif} soat + ${amount}\n`;
                 const values = { collection_name, tarif: tarif?.split("&").join("_"), amount, deedline: deadline }
-                s = await o_controller.createBonus(values);
+                s = await o_controller.createBonus(values, key);
             }
 
             await db.createEvent(
@@ -573,7 +567,7 @@ const setupCallbackHandlers = (bot) => {
     }
     const manage_bonus = async (callbackQuery) => {
         const chatId = callbackQuery.from.id;
-        const bonuses = await o_controller.getBonusesList();
+        const bonuses = await o_controller.getBonusesList(key);
         if (bonuses.length === 0) return bot.sendMessage(chatId, "Bonuslar mavjud emas!");
         bonuses.map((bonus) => {
             const details = bonus.map((item) => {
@@ -606,7 +600,7 @@ const setupCallbackHandlers = (bot) => {
         const option = { parse_mode: "Markdown", reply_markup: { force_reply: true } };
         bot.sendMessage(chatId, "*Bonusning amal qilish muddatini(soatini) raqamlar bilan shu habarga javoban yozing masalan: 24*", option).then((sent_msg) => {
             bot.onReplyToMessage(chatId, sent_msg.message_id, async (reply) => {
-                const s = await o_controller.activateBonus(dinamic, reply.text);
+                const s = await o_controller.activateBonus(dinamic, reply.text, key);
                 if (s) {
                     bot.answerCallbackQuery(callbackQuery.id, {
                         text: "Bonus aktivlashtirildi!",
@@ -622,72 +616,55 @@ const setupCallbackHandlers = (bot) => {
             })
         })
     }
-    const edit_start_time = async (callbackQuery, dinamic, templateDatas) => {
+    const cancel_shablon = async (callbackQuery, dinamic, templateDatas) => {
         const chatId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
+        bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Shablon bekor qilindi!", show_alert: false,
+        });
+        bot.editMessageReplyMarkup(
+            { inline_keyboard: [[]], },
+            { chat_id: chatId, message_id: message_id, }
+        );
         bot.sendMessage(
             chatId,
-            `Boshlanish vaqtini shu habarga javoban (oy.kun-soat:daqiqa) sifatida yozing masalan: *01.01-00:00*`,
-            { parse_mode: "Markdown", reply_markup: { force_reply: true } }
-        ).then((sentMessage) => {
-            bot.onReplyToMessage(chatId, sentMessage.message_id, (reply) => {
-                const [time, hour] = reply.text?.split("-");
-                const { action_hour, start_hour } = calcTimeRange(hour, false);
-                templateDatas[dinamic] = {
-                    ...templateDatas[dinamic],
-                    month: time.split(".")[0],
-                    day: time.split(".")[1],
-                    start_hour,
-                    action_hour,
-                };
-                const options = {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [{ text: "❌", callback_data: `edit_start_time|${dinamic}`, }, { text: "✅", callback_data: `accept_start_time|${dinamic}`, }],
-                        ],
-                    },
-                    parse_mode: "Markdown",
-                };
-                bot.deleteMessage(chatId, message_id);
-                bot.sendMessage(
-                    chatId,
-                    `Buyurtma boshlanishi vaqti: ${time} - ${start_hour}\nBand qilinish vaqti: ${time} - ${action_hour}\n\n Buni tasdiqlaysizmi?`,
-                    options
-                );
-                return bot.answerCallbackQuery(callbackQuery.id, {
-                    text: "Shablon tayyor!",
-                    show_alert: false,
-                });
-            });
-        });
+            `Shablon bekor qilindi!`,
+            { parse_mode: "Markdown", reply_to_message_id: message_id }
+        );
+        delete templateDatas[dinamic];
     }
     const accept_start_time = async (callbackQuery, dinamic) => {
         const chatId = callbackQuery.from.id;
         const message_id = callbackQuery.message.message_id;
-        const bot_username = process.env.BOT_USERNAME;
+        const bot_username = security[key]?.bot_username;
+        const [id, acc_id] = dinamic.split("_");
+
         bot.sendMessage(
             chatId,
-            `Harid shabloni tayyor 👇\n\n\`${bot_username} ${dinamic}\`\n\`${bot_username} ${dinamic}\`\n\`${bot_username} ${dinamic}\``,
+            `Harid shabloni tayyor 👇\n\n\`${bot_username} ${id}\`\n\`${bot_username} ${id}\`\n\`${bot_username} ${id}\``,
             { parse_mode: "Markdown" }
         );
 
         bot.editMessageReplyMarkup(
-            { inline_keyboard: [[],], },
-            {
-                chat_id: chatId,
-                message_id: message_id,
-            }
+            { inline_keyboard: [[]] },
+            { chat_id: chatId, message_id: message_id }
         );
 
-        bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Shablon tayyor!",
-            show_alert: false,
-        });
+        const sql = `UPDATE accounts SET status = 1 WHERE acc_id = ?;`;
+        const s1 = await db.dbQuery(key, sql, [acc_id]);
+        const s = JSON.parse(JSON.stringify(s1));
 
-    }
+        if (s.affectedRows > 0) {
+            bot.answerCallbackQuery(callbackQuery.id, {
+                text: "Shablon tayyor va Akkount band qilindi!",
+                show_alert: false,
+            });
+        }
+    };
+
     const pay = async (callbackQuery, dinamic) => {
         const userId = callbackQuery.from.id;
-        const s = await service.updatePaymentStatus(dinamic);
+        const s = await service.updatePaymentStatus(dinamic, key);
         if (s) {
             bot.answerCallbackQuery(callbackQuery.id, {
                 text: "To'lov qabul qilindi!",
@@ -722,15 +699,15 @@ const setupCallbackHandlers = (bot) => {
         next_bonus,
         reject_bonus,
         accept_bonus,
-        edit_start_time,
+        cancel_shablon,
         accept_start_time,
         manage_bonus,
         activate_bonus,
         delete_bonus,
         pay,
-        ...setupExtras(bot),
-        ...setupOrders(bot),
-        ...setupReports(bot),
+        ...setupExtras(bot, key),
+        ...setupOrders(bot, key),
+        ...setupReports(bot, key),
     };
 };
 

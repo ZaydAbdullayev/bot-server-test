@@ -1,11 +1,8 @@
-const { adminChatIds } = require("../../mocks/security");
+const security = require("../../mocks/security");
 const service = require("../service/register.service");
-const path = require("path");
-const statePath = path.join(process.cwd(), 'mocks/state.js');
-const state = require(statePath);
-const { winners } = state;
+const { winners, cancelSending } = require("../../mocks/state");
 
-const setupSendMessages = (bot) => {
+const setupSendMessages = (bot, key) => {
     if (!bot) {
         throw new Error("Bot or service is not provided correctly.");
     }
@@ -52,7 +49,7 @@ const setupSendMessages = (bot) => {
         }
     };
     const sendMessagesToAdmins = async (user, adminMessage, k = false) => {
-        for (const adminChatId of adminChatIds) {
+        for (const adminChatId of security[key].admin_chat_ids) {
             try {
                 if (user?.video_note) {
                     await bot.sendVideoNote(adminChatId, user.video_note);
@@ -111,18 +108,19 @@ const setupSendMessages = (bot) => {
         }
     };
     const sendMessageForSuccess = async (adminMessage) => {
-        for (const adminChatId of adminChatIds) {
+        for (const adminChatId of security[key]?.admin_chat_ids) {
             try {
                 await bot.sendMessage(adminChatId, adminMessage, {
                     parse_mode: "Markdown",
                 });
             } catch (error) {
+                console.log("adminlarga xabar yuborishda xatolik yuz berdi");
                 continue;
             }
         }
     };
     const sendMessageForSuccessUpdate = async (msg_id) => {
-        for (const adminChatId of adminChatIds) {
+        for (const adminChatId of security[key]?.admin_chat_ids) {
             try {
                 await bot.editMessageReplyMarkup(
                     { inline_keyboard: [], },
@@ -132,6 +130,7 @@ const setupSendMessages = (bot) => {
                     }
                 )
             } catch (error) {
+                console.log("adminlarga xabar yuborishda xatolik yuz berdi");
                 continue;
             }
         }
@@ -144,12 +143,12 @@ const setupSendMessages = (bot) => {
                     : { 1: 3, 2: 3, 3: 3, 4: 3, 5: 3 };
             for (const [i, id] of ids?.entries()) {
                 try {
-                    const user = winners?.[id] || { user_id: id, total_spent: 0 };
+                    const user = winners[key]?.[id] || { user_id: id, total_spent: 0 };
                     const result = await service.addUserToWinnersList({
                         ...user,
                         prize_time: prizeTime[i + 1],
                         rank_user: i + 1,
-                    });
+                    }, key);
                     if (result) {
                         try {
                             await bot.sendMessage(
@@ -158,7 +157,7 @@ const setupSendMessages = (bot) => {
                                 } soatga free akk yutib oldingiz!*\n\n*YUTUQNI OLISH UCHUN*👇\n*✍️ @ARENDA_ATOMIC ✅*`,
                                 { parse_mode: "Markdown" }
                             );
-                            Object.assign(winners[id], {});
+                            Object.assign(winners[key][id], {});
                         } catch (error) {
                             bot.sendMessage(chatId, `${id} ga g'olib bo'lganligi haqidagi xabar jo'natishda xatolik yuz berdi`);
                         }
@@ -193,8 +192,56 @@ const setupSendMessages = (bot) => {
             console.log(`${chatId} ga xabar o'chirishda xatolik yuz berdi`);
         }
     }
+    // const sendMessageToUsers = async (chatId, text, users, entities) => {
+    //     await bot.sendMessage(chatId, `📤 Foydalanuvchilarga habar jo'natilmoqda...`);
+
+    //     let sentCount = 0;
+    //     let blockedCount = 0;
+    //     let failedCount = 0;
+    //     let reportMessageId = null;
+
+    //     const updateAdminReport = async () => {
+    //         const reportText = `📊 *Habar yuborish holati:*\n✅ *Muvovvaqiyatli yuborildi:* ${users.length} / ${sentCount}\n🚫 *Botni blocklaganlar:* ${blockedCount}\n⚠️ *Xato holati:* ${failedCount}\n🔄 *Qolgan userlar:* ${users.length - (sentCount + blockedCount + failedCount)}`;
+
+    //         if (reportMessageId) {
+    //             await bot.editMessageText(reportText, {
+    //                 chat_id: chatId,
+    //                 message_id: reportMessageId,
+    //                 parse_mode: "Markdown",
+    //             }).catch(() => { });
+    //         } else {
+    //             const sentReport = await bot.sendMessage(chatId, reportText, { parse_mode: "Markdown" });
+    //             reportMessageId = sentReport.message_id;
+    //         }
+    //     };
+
+    //     users.forEach((user, index) => {
+    //         setTimeout(() => {
+
+    //             bot.sendMessage(user.user_id, text, { entities })
+    //                 .then(() => {
+    //                     sentCount++;
+    //                     updateAdminReport();
+    //                 })
+    //                 .catch((error) => {
+    //                     if (error.response?.body?.error_code === 403) {
+    //                         blockedCount++;
+    //                         console.log("Blocked user:", error.response);
+    //                     } else {
+    //                         failedCount++;
+    //                         console.log("Failed user:", error.response);
+    //                     }
+    //                     updateAdminReport();
+    //                 });
+    //         }, index * 250 + Math.floor(index / 20) * 5000);
+    //     });
+    // }
     const sendMessageToUsers = async (chatId, text, users, entities) => {
-        await bot.sendMessage(chatId, `📤 Barcha foydalanuvchilarga habar jo'natilmoqda...`);
+        await bot.sendMessage(chatId, `📤 Foydalanuvchilarga habar jo'natilmoqda...`, {
+            reply_markup: {
+                inline_keyboard: [[{ text: "🛑 Yuborishni to'xtatish", callback_data: "cancel_sending" }]]
+            }
+        });
 
         let sentCount = 0;
         let blockedCount = 0;
@@ -206,7 +253,7 @@ const setupSendMessages = (bot) => {
 
             if (reportMessageId) {
                 await bot.editMessageText(reportText, {
-                    chat_id: adminId,
+                    chat_id: chatId,
                     message_id: reportMessageId,
                     parse_mode: "Markdown",
                 }).catch(() => { });
@@ -216,10 +263,13 @@ const setupSendMessages = (bot) => {
             }
         };
 
-        users.forEach((user, index) => {
-            setTimeout(() => {
+        for (let index = 0; index < users.length; index++) {
+            if (cancelSending[key]) break;
 
-                bot.sendMessage(user.user_id, text, { entities })
+            setTimeout(() => {
+                if (cancelSending[key]) return;
+
+                bot.sendMessage(users[index].user_id, text, { entities })
                     .then(() => {
                         sentCount++;
                         updateAdminReport();
@@ -227,16 +277,15 @@ const setupSendMessages = (bot) => {
                     .catch((error) => {
                         if (error.response?.body?.error_code === 403) {
                             blockedCount++;
-                            console.log("Blocked user:", error.response);
                         } else {
                             failedCount++;
-                            console.log("Failed user:", error.response);
                         }
                         updateAdminReport();
                     });
             }, index * 250 + Math.floor(index / 20) * 5000);
-        });
-    }
+        }
+    };
+
 
     return {
         sendMessagesToAdmins,

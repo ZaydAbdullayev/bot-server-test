@@ -5,11 +5,9 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const dayjs = require("dayjs");
-require('dotenv').config();
 
-const db_name = process.env.DB_NAME;
 class UserService {
-    static async getAllAccs(dbName = db_name) {
+    static async getAllAccs(dbName) {
         const currentDate = dayjs().format("YYYY-MM-DD HH:mm:ss");
         const query = `
   SELECT
@@ -45,7 +43,7 @@ ORDER BY
         const parsedData = JSON.parse(JSON.stringify(result));
         return parsedData;
     }
-    static async getAccById(id, dbName = db_name) {
+    static async getAccById(id, dbName) {
         try {
             const query = "SELECT * FROM accounts WHERE acc_id = ?";
             const result = await QueryService.dbQuery(dbName, query, [id]);
@@ -53,8 +51,8 @@ ORDER BY
                 console.error("No account found for the given ID");
                 return [];
             }
-            const discount = await o_controller.getDiscounts();
-            const { data: bonuses } = await o_controller.getActiveBonuses();
+            const discount = await o_controller.getDiscounts(dbName);
+            const { data: bonuses } = await o_controller.getActiveBonuses(dbName);
             const parsed_data = JSON?.parse(JSON?.stringify(result[0]));
             let price_list = JSON?.parse(parsed_data?.price_list);
             const discountItem = discount.length > 0 ? discount[0] : null;
@@ -83,7 +81,7 @@ ORDER BY
         }
 
     }
-    static async getAccsShortName(dbName = db_name) {
+    static async getAccsShortName(dbName) {
         try {
             const query = `
 SELECT 
@@ -119,7 +117,7 @@ WHERE
             return []
         }
     }
-    static async updateAcc(acc, id, dbName = db_name) {
+    static async updateAcc(acc, id, dbName) {
         const query = `
     UPDATE accounts 
     SET 
@@ -132,7 +130,8 @@ WHERE
       owner_id = ?, 
       price_list = ?, 
       custom_price_list = ?, 
-      status = ?
+      status = ?,
+      hour_by = ?
     WHERE acc_id = ?
   `;
         const values = [
@@ -146,6 +145,7 @@ WHERE
             JSON.stringify(acc.price_list),
             JSON.stringify(acc.daily_price_list),
             acc.status,
+            acc.hour_by,
             id
         ];
         const result = await QueryService.dbQuery(dbName, query, values);
@@ -190,7 +190,7 @@ WHERE
         const newurl = this.getImgUrl(data);
         return newurl;
     }
-    static async getAccSalesListById(id, dbName = db_name) {
+    static async getAccSalesListById(id, dbName) {
         try {
             const query = `
   SELECT 
@@ -214,26 +214,26 @@ WHERE
             return { error: err.message };
         }
     }
-    static async addAccFavouriteList(data, dbName = db_name) {
+    static async addAccFavouriteList(data, dbName) {
         const query = `INSERT INTO favourite_accs SET ?`
         const result = await QueryService.dbQuery(dbName, query, [data]);
         const s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0
     }
-    static async removeAccFavouriteList(data, dbName = db_name) {
+    static async removeAccFavouriteList(data, dbName) {
         const query = "DELETE FROM favourite_accs WHERE acc_id = ? AND user_id = ?";
         const result = await QueryService.dbQuery(dbName, query, [data.acc_id, data.user_id]);
         const s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0
     }
-    static async getFavouriteList(user_id, dbName = db_name) {
+    static async getFavouriteList(user_id, dbName) {
         const query = "SELECT acc_id FROM favourite_accs WHERE user_id = ?";
         const result = await QueryService.dbQuery(dbName, query, [user_id]);
         let s = JSON.parse(JSON.stringify(result));
         s = s.map((item) => item.acc_id);
         return s;
     }
-    static async addKonkurs(data, dbName = db_name) {
+    static async addKonkurs(data, dbName) {
         // Önce status = 0 olan kayıt var mı diye kontrol et
         const checkQuery = "SELECT button_text FROM konkurs WHERE status = 0 LIMIT 1";
         const existingRow = await QueryService.dbQuery(dbName, checkQuery);
@@ -250,17 +250,35 @@ WHERE
         const s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0;
     }
-    static async updateKonkurs(data, status, dbName = db_name) {
+    static async updateKonkurs(data, status, dbName) {
         const query = "UPDATE konkurs SET ? WHERE status = ?";
         const result = await QueryService.dbQuery(dbName, query, [data, status]);
         const s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0;
     }
-    static async getContestant(name, dbName = db_name) {
+    static async getContestant(name, dbName) {
         const query = "SELECT * FROM konkurs WHERE name = ?";
         const result = await QueryService.dbQuery(dbName, query, [name]);
         const s = JSON.parse(JSON.stringify(result));
         return s[0];
+    }
+    static async getKonkurs(dbName) {
+        const query = "SELECT * FROM konkurs";
+        const result = await QueryService.dbQuery(dbName, query);
+        const s = JSON.parse(JSON.stringify(result));
+        return s;
+    }
+    static async updateKonkursStatus(name, status, dbName) {
+        const query = "UPDATE konkurs SET status = ? WHERE name = ?";
+        const result = await QueryService.dbQuery(dbName, query, [status, name]);
+        const s = JSON.parse(JSON.stringify(result));
+        return s.affectedRows > 0;
+    }
+    static async deleteKonkurs(name, dbName) {
+        const query = "DELETE FROM konkurs WHERE name = ?";
+        const result = await QueryService.dbQuery(dbName, query, [name]);
+        const s = JSON.parse(JSON.stringify(result));
+        return s.affectedRows > 0;
     }
 }
 

@@ -1,7 +1,7 @@
-const { paidChanelId } = require("../../mocks/security");
+const security = require("../../mocks/security");
 const { convertToTimeFormat, generateId, calcTimeRange } = require("../utils/services");
 
-const photoHandler = (bot) => {
+const photoHandler = (bot, key) => {
     const timers = {};
 
     const adminSetup = (
@@ -34,7 +34,12 @@ const photoHandler = (bot) => {
                 const options = {
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: "❌", callback_data: `edit_start_time|${id}`, }, { text: "✅", callback_data: `accept_start_time|${id}`, }],
+                            [
+                                { text: "❌", callback_data: `cancel_shablon|${id}`, },
+                                {
+                                    text: "✅", callback_data: `accept_start_time|${id}_${us?.acc_number || us?.acc_name}`,
+                                }
+                            ],
                         ],
                     },
                     parse_mode: "Markdown",
@@ -135,9 +140,9 @@ const photoHandler = (bot) => {
                 }));
 
                 bot
-                    .sendMediaGroup(paidChanelId, mediaGroup)
+                    .sendMediaGroup(security[key]?.paid_chat_id, mediaGroup)
                     .then(() => {
-                        bot.sendMessage(paidChanelId, message, {
+                        bot.sendMessage(security[key]?.paid_chat_id, message, {
                             reply_markup: {
                                 inline_keyboard: [
                                     [
@@ -169,7 +174,6 @@ const photoHandler = (bot) => {
                 photo: [...(userInfo[chatId]?.photo || []), img],
                 name: name,
             };
-
             const createMessage = () => {
                 const options = {
                     reply_markup: {

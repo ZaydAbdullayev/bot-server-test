@@ -3,38 +3,32 @@ const {
     myCommands,
     generalCommands,
 } = require("../../mocks/mock");
-const { myChatId, ownersChatId, } = require("../../mocks/security");
+const security = require("../../mocks/security");
 const service = require("../service/register.service");
 const o_controller = require("../controller/order.controller");
 const { parseTextSimple, generateId } = require("../utils/services");
 const { setupSendMessages } = require("./response");
-const path = require("path");
-const statePath = path.join(process.cwd(), 'mocks/state.js');
-const state = require(statePath);
-const { lobby, acc_data, test_data } = state;
-require('dotenv').config();
+const { lobby, acc_data, mode } = require("../../mocks/state");
 
-const db_name = process.env.DB_NAME;
 const dayjs = require("dayjs");
 
-const setupEventHandlers = (bot) => {
+const setupEventHandlers = (bot, key) => {
+    const db_name = key;
     if (!bot) {
         throw new Error("Bot or service is not provided correctly.");
     }
-
-    const { sendMessageToUsers } = setupSendMessages(bot);
 
     bot.onText(/\/start/, async (msg, match) => {
         const chatId = msg.chat.id;
         const userID = msg.from.id;
         const userName = msg.from.first_name;
 
-        if (ownersChatId.includes(userID)) {
+        if (security[key]?.owners_chat_id.includes(userID)) {
             bot.setMyCommands(adminCommands, {
                 scope: { type: "chat", chat_id: chatId },
             });
             bot.sendMessage(chatId, "Assalomu alaykum, Admin!");
-        } else if (myChatId.includes(userID)) {
+        } else if (security[key]?.my_chat_id.includes(userID)) {
             bot.setMyCommands(myCommands, {
                 scope: { type: "chat", chat_id: chatId },
             });
@@ -43,7 +37,8 @@ const setupEventHandlers = (bot) => {
             bot.setMyCommands(generalCommands, {
                 scope: { type: "chat", chat_id: chatId },
             });
-            const existUser = await service.checkIfRegistered(chatId);
+            await service.addParticipant(chatId, key);
+            const existUser = await service.checkIfRegistered(chatId, key);
             const options_registered = {
                 reply_markup: {
                     inline_keyboard: [
@@ -93,11 +88,19 @@ const setupEventHandlers = (bot) => {
         const chatId = msg.chat.id;
         const userID = msg.from.id;
         const userName = msg.from.first_name;
+        await service.addParticipant(chatId, key);
+
+        if (security[key]?.owners_chat_id.includes(userID)) {
+            bot.setMyCommands(adminCommands, {
+                scope: { type: "chat", chat_id: chatId },
+            });
+            return;
+        }
 
         bot.setMyCommands(generalCommands, {
             scope: { type: "chat", chat_id: chatId },
         });
-        const existUser = await service.checkIfRegistered(chatId);
+        const existUser = await service.checkIfRegistered(chatId, key);
         const options_registered = {
             reply_markup: {
                 inline_keyboard: [
@@ -146,7 +149,7 @@ const setupEventHandlers = (bot) => {
                     bot.sendMessage(chatId, "Afsuski ro'yxatga olish yakunlandi!");
                     return;
                 }
-                const existUserInLobby = lobby.find((item) => item.user_id === userID);
+                const existUserInLobby = lobby[key]?.find((item) => item.user_id === userID);
                 if (existUserInLobby) {
                     return bot.sendMessage(chatId, "Siz allaqachon lobby uchun ro'yxatdan o'tgansiz! ✅");
                 }
@@ -159,7 +162,7 @@ const setupEventHandlers = (bot) => {
                     bot.onReplyToMessage(chatId, message_id, async (msg) => {
                         const text = msg.text.replace(/\D/g, '');
                         const data = { user_id: userID, acc_id: text };
-                        lobby.push(data);
+                        lobby[key]?.push(data);
                         bot.sendMessage(chatId, "Muvaffaqiyatli ro'yxatdan o'tdingiz! ✅");
                     });
                     bot.once("text", (msg) => {
@@ -188,7 +191,7 @@ const setupEventHandlers = (bot) => {
         const id = match[1];
 
         try {
-            const user = await service.fetchUserById(id);
+            const user = await service.fetchUserById(id, key);
             if (user) {
                 const link = `[${user.user_id}](tg://user?id=${user.user_id})`;
 
@@ -221,7 +224,7 @@ const setupEventHandlers = (bot) => {
     bot.onText(/\/app/, (msg) => {
         const chatId = msg.chat.id;
         const webAppUrl = `https://bot.foodify.uz?chatId=${chatId}&&type=home&&mode=keyboard&&db_name=${db_name}`;
-        // const webAppUrl = `https://xhvvffvj-5173.euw.devtunnels.ms?chatId=${chatId}&&type=home`;
+        // const webAppUrl = `https://r68qlmhf-5173.euw.devtunnels.ms?chatId=${5750925866}&&type=home&&mode=keyboard&&db_name=${db_name}`;
         bot.sendMessage(chatId, "Site ochish uchun pastdagi tugmani bosing:", {
             reply_markup: {
                 keyboard: [
@@ -234,7 +237,7 @@ const setupEventHandlers = (bot) => {
     });
     bot.onText(/\/add_acc/, (msg) => {
         const chatId = msg.chat.id;
-        mode = "add";
+        mode[key] = "add";
 
         bot.sendMessage(chatId, "Accaount qo'shish modi faollashtirildi!");
         bot.sendMessage(
@@ -262,14 +265,14 @@ price_list: {
     bot.onText(/\/acc_info/, (msg) => {
         const chatId = msg.chat.id;
         const msgText = msg.text;
-        Object.assign(acc_data, parseTextSimple(msgText));
+        Object.assign(acc_data[key], parseTextSimple(msgText));
         bot.sendMessage(chatId, "Accaount ma'lumotlari muvaffaqiyatli qo'shildi!");
         bot.sendMessage(chatId, "Endi 4 ta rasm yuboring!");
     });
     bot.onText(/\/daily_price_list (.+)/, (msg, match) => {
         const chatId = msg.chat.id;
         const daily_price_list = JSON.parse(match[1]);
-        Object.assign(acc_data, { ...acc_data, daily_price_list });
+        Object.assign(acc_data[key], { ...acc_data[key], daily_price_list });
         bot.sendMessage(chatId, "Daily price list muvaffaqiyatli qo'shildi!");
         bot.sendMessage(
             chatId,
@@ -279,17 +282,17 @@ price_list: {
     bot.onText(/\/end/, (msg) => {
         const chatId = msg.chat.id;
         const id = generateId();
-        if (!acc_data?.price_list) {
+        if (!acc_data[key]?.price_list) {
             return bot.sendMessage(chatId, "Accaount ma'lumotlari to'liq emas!");
         }
-        const s = service.addAcc(acc_data, id);
+        const s = service.addAcc(acc_data[key], id, key);
         if (s) {
-            mode = "dev";
-            Object.assign(acc_data, {});
+            mode[key] = "dev";
+            Object.assign(acc_data[key], {});
             return bot.sendMessage(chatId, "Accaount muvaffaqiyatli qo'shildi!");
         } else {
-            mode = "dev";
-            Object.assign(acc_data, {});
+            mode[key] = "dev";
+            Object.assign(acc_data[key], {});
             return bot.sendMessage(
                 chatId,
                 "Xatolik yuz berdi. Iltimos qayta urinib ko'ring!"
@@ -306,8 +309,8 @@ price_list: {
     });
     bot.onText(/\/discount/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(chatId)) {
-            const discounts = await o_controller.getDiscounts();
+        if (security[key]?.owners_chat_id.includes(chatId)) {
+            const discounts = await o_controller.getDiscounts(key);
             const options = {
                 reply_markup: {
                     inline_keyboard: [
@@ -323,8 +326,8 @@ price_list: {
     })
     bot.onText(/\/bonus/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(chatId)) {
-            const bonuses = await o_controller.getBonusesList();
+        if (security[key]?.owners_chat_id.includes(chatId)) {
+            const bonuses = await o_controller.getBonusesList(key);
             const options = {
                 reply_markup: {
                     inline_keyboard: [
@@ -341,7 +344,7 @@ price_list: {
     })
     bot.onText(/\/free/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(chatId)) {
+        if (security[key]?.owners_chat_id.includes(chatId)) {
             const options = {
                 reply_markup: {
                     inline_keyboard: [
@@ -360,7 +363,7 @@ price_list: {
     });
     bot.onText(/\/report/, async (msg) => {
         const chatId = msg.chat.id
-        if (ownersChatId.includes(chatId) || myChatId.includes(chatId)) {
+        if (security[key]?.owners_chat_id.includes(chatId) || security[key]?.my_chat_id.includes(chatId)) {
             const options = {
                 reply_markup: {
                     inline_keyboard: [
@@ -378,37 +381,21 @@ price_list: {
             bot.sendMessage(chatId, "Bu buyruqni berish uchun sizda vakolat yo'q");
         }
     });
-    bot.onText(/\/send_msg_to_all/, async (msg) => {
+    bot.onText(/\/send_msg/, async (msg) => {
         const chatId = msg.chat.id;
-
-        const all_users = await service.fetchAllUsers();
-        // const all_users = Array.from({ length: 1 }, (_, i) => ({ user_id: '1831538012' }));
-
-        if (all_users.length === 0) {
-            return bot.sendMessage(chatId, "⚠️ Kayıtlı kullanıcı bulunamadı.");
+        const options = {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "Ro'yxatdan o'tganlarga xabar yuborish", callback_data: "send_msg_to_all|" }],
+                    [{ text: "Barcha foydalanuvchilarga xabar yuborish", callback_data: "send_msg_to_participants|" }],
+                ],
+            },
         }
-
-        bot.sendMessage(chatId, `${all_users.length} ta foydalanuvchi topildi!\nHabar matnini shu habarga javoban yuboring:`, {
-            reply_markup: { force_reply: true },
-        }).then((s) => {
-            const { message_id } = s;
-
-            bot.onReplyToMessage(chatId, message_id, async (msg) => {
-                const text = msg.text?.trim();
-                const entities = msg.entities || [];
-
-                if (!text) {
-                    return bot.sendMessage(chatId, "⚠️ Boş mesaj gönderemezsiniz! Lütfen bir mesaj girin.");
-                }
-
-                sendMessageToUsers(chatId, text, all_users, entities);
-            });
-        });
+        bot.sendMessage(chatId, `Kimga xabar yuborishni xohlaysiz ?`, options);
     });
     bot.onText(/\/test/, async (msg) => {
         const chatId = msg.chat.id;
         // console.log(chatId);
-        test_data[2300] = "test baslatildi";
         bot.sendMessage(chatId, "starting test");
 
         // let data = {

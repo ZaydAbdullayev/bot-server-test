@@ -24,7 +24,7 @@ const adminCommands = [
     { command: "top5", description: "Top 5" },
     { command: "random", description: "Random 5" },
     { command: "free", description: "Qo'shimchalar" },
-    { command: "send_msg_to_all", description: "Barcha foydalanuvchilarga habar jo'natish" },
+    { command: "send_msg", description: "Barcha foydalanuvchilarga habar jo'natish" },
 ];
 const myCommands = [
     { command: "start", description: "Start" },

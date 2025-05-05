@@ -3,6 +3,7 @@ const generalCommands = [
     { command: "start", description: "Start" },
     { command: "app", description: "App" },
     { command: "my_id", description: "Mening id rqamim" },
+    { command: "my_spins", description: "Mening spinlarim" },
     { command: "konkurs", description: "Konkurs" },
 ];
 const adminCommands = [

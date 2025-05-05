@@ -6,6 +6,7 @@ const {
 const security = require("../../mocks/security");
 const service = require("../service/register.service");
 const o_controller = require("../controller/order.controller");
+const u_controller = require("../controller/user.controller");
 const { parseTextSimple, generateId } = require("../utils/services");
 const { setupSendMessages } = require("./response");
 const { lobby, acc_data, mode } = require("../../mocks/state");
@@ -224,7 +225,7 @@ const setupEventHandlers = (bot, key) => {
     bot.onText(/\/app/, (msg) => {
         const chatId = msg.chat.id;
         const webAppUrl = `https://bot.foodify.uz?chatId=${chatId}&&type=home&&mode=keyboard&&db_name=${db_name}`;
-        // const webAppUrl = `https://r68qlmhf-5173.euw.devtunnels.ms?chatId=${5750925866}&&type=home&&mode=keyboard&&db_name=${db_name}`;
+        // const webAppUrl = `https://xhvvffvj-5173.euw.devtunnels.ms?chatId=${chatId}&&type=home`;
         bot.sendMessage(chatId, "Site ochish uchun pastdagi tugmani bosing:", {
             reply_markup: {
                 keyboard: [
@@ -393,6 +394,27 @@ price_list: {
         }
         bot.sendMessage(chatId, `Kimga xabar yuborishni xohlaysiz ?`, options);
     });
+    bot.onText(/\/my_spins/, async (msg) => {
+        const chatId = msg.chat.id;
+        const spins = await u_controller.getUsersSpins(chatId, key);
+        const options = {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "Spin aylantirish 🎰", callback_data: "use_spin|" }],
+                ],
+            },
+            parse_mode: "Markdown",
+        };
+        if (!spins?.status) {
+            return bot.sendMessage(chatId, `Sizda *${spins.spin_count}* urunish mavjud\nLekin ayni vaqtda ulardan foydalanish mumkun emas`, { parse_mode: "Markdown" });
+        }
+        if (spins?.spin_count) {
+            bot.sendMessage(chatId, `Sizning mavjud urunishlaringiz: *${spins.spin_count}*`, options);
+        } else {
+            bot.sendMessage(chatId, "Sizda hech qanday urunish mavjud emas.", { parse_mode: "Markdown" });
+        }
+    });
+
     bot.onText(/\/test/, async (msg) => {
         const chatId = msg.chat.id;
         // console.log(chatId);

@@ -192,50 +192,6 @@ const setupSendMessages = (bot, key) => {
             console.log(`${chatId} ga xabar o'chirishda xatolik yuz berdi`);
         }
     }
-    // const sendMessageToUsers = async (chatId, text, users, entities) => {
-    //     await bot.sendMessage(chatId, `📤 Foydalanuvchilarga habar jo'natilmoqda...`);
-
-    //     let sentCount = 0;
-    //     let blockedCount = 0;
-    //     let failedCount = 0;
-    //     let reportMessageId = null;
-
-    //     const updateAdminReport = async () => {
-    //         const reportText = `📊 *Habar yuborish holati:*\n✅ *Muvovvaqiyatli yuborildi:* ${users.length} / ${sentCount}\n🚫 *Botni blocklaganlar:* ${blockedCount}\n⚠️ *Xato holati:* ${failedCount}\n🔄 *Qolgan userlar:* ${users.length - (sentCount + blockedCount + failedCount)}`;
-
-    //         if (reportMessageId) {
-    //             await bot.editMessageText(reportText, {
-    //                 chat_id: chatId,
-    //                 message_id: reportMessageId,
-    //                 parse_mode: "Markdown",
-    //             }).catch(() => { });
-    //         } else {
-    //             const sentReport = await bot.sendMessage(chatId, reportText, { parse_mode: "Markdown" });
-    //             reportMessageId = sentReport.message_id;
-    //         }
-    //     };
-
-    //     users.forEach((user, index) => {
-    //         setTimeout(() => {
-
-    //             bot.sendMessage(user.user_id, text, { entities })
-    //                 .then(() => {
-    //                     sentCount++;
-    //                     updateAdminReport();
-    //                 })
-    //                 .catch((error) => {
-    //                     if (error.response?.body?.error_code === 403) {
-    //                         blockedCount++;
-    //                         console.log("Blocked user:", error.response);
-    //                     } else {
-    //                         failedCount++;
-    //                         console.log("Failed user:", error.response);
-    //                     }
-    //                     updateAdminReport();
-    //                 });
-    //         }, index * 250 + Math.floor(index / 20) * 5000);
-    //     });
-    // }
     const sendMessageToUsers = async (chatId, text, users, entities) => {
         await bot.sendMessage(chatId, `📤 Foydalanuvchilarga habar jo'natilmoqda...`, {
             reply_markup: {

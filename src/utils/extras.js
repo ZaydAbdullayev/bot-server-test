@@ -668,6 +668,54 @@ const setupExtras = (bot, key) => {
         });
         bot.deleteMessage(chatId, msg_id);
     }
+    const use_spin = async (callbackQuery) => {
+        const chatId = callbackQuery.from.id;
+        const msg_id = callbackQuery.message.message_id;
+        const spins = await u_controller.getUsersSpins(chatId, key);
+        if (!spins?.status) {
+            return bot.sendMessage(chatId, "Ayni vaqtda ulardan foydalanish mumkun emas", { parse_mode: "Markdown" });
+        }
+        if (!spins.spin_count) {
+            bot.answerCallbackQuery(callbackQuery.id, {
+                text: "Sizda urunishlar mavjud emas!",
+                show_alert: true,
+            });
+            return;
+        }
+        bot.sendDice(chatId, { emoji: '🎰' })
+            .then(async (result) => {
+                const { dice } = result;
+                const { value } = dice;
+                if (value === 64) {
+                    bot.sendMessage(chatId, "Siz yutdingiz! 🎉\n\nYutuqni adminga yozib olishingiz mumkun");
+                } else {
+                    bot.sendMessage(chatId, "Siz yutqazdingiz! ❌\n\nYutqazdingiz, qayta urinib ko'ring!");
+                }
+                const s = await u_controller.updateUserSpins(chatId, spins.spin_count - 1, key);
+                if (!s) {
+                    bot.answerCallbackQuery(callbackQuery.id, {
+                        text: "Urunish sonini yangilashda xatolik yuz berdi ❌",
+                        show_alert: true,
+                    });
+                }
+                bot.answerCallbackQuery(callbackQuery.id, {
+                    text: "1ta urunish ishlatildi!",
+                    show_alert: false,
+                });
+                const options = {
+                    reply_markup: {
+                        inline_keyboard: spins.spin_count > 0 ? [
+                            [{ text: "🎰 Spin aylantirish", callback_data: `use_spin|` }],
+                        ] : [],
+                    },
+                }
+                sendMessage(chatId, `Sizda ${spins.spin_count - 1} ta urunish qoldi`, options);
+                deleteMessage(chatId, msg_id);
+            })
+            .catch((error) => {
+                console.error("Error while sending dice:", error);
+            });
+    }
 
     return {
         create_konkurs,
@@ -685,6 +733,7 @@ const setupExtras = (bot, key) => {
         my_konkurs,
         update_konkurs,
         delete_konkurs,
+        use_spin,
     };
 };
 

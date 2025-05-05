@@ -8,6 +8,7 @@ const {
 } = require("../utils/services");
 const security = require("../../mocks/security");
 const o_controller = require("../controller/order.controller");
+const u_controller = require("../controller/user.controller");
 
 const setupOrders = (bot, key) => {
     if (!bot) {
@@ -20,7 +21,7 @@ const setupOrders = (bot, key) => {
         sendLocation,
         deleteMessage,
         sendMessageForSuccessUpdate,
-    } = setupSendMessages(bot);
+    } = setupSendMessages(bot, key);
 
     const delete_order_cancel = async (callbackQuery, dinamic) => {
         const ids = dinamic?.split("_");
@@ -145,11 +146,11 @@ const setupOrders = (bot, key) => {
                 return;
             }
             const convertTime = (time) => {
-                if (time.startsWith("Tungi")) {
+                if (time.endsWith(")")) {
                     return 12;
                 } else {
                     const t = time?.split(" ");
-                    if (t[1] === "soat") return parseFloat(t[0]);
+                    if (t[1] === "soat" || t[1] === "s") return parseFloat(t[0]);
                     if (t[1] === "kun") return parseFloat(t[0]) * 24;
                 }
             };
@@ -160,7 +161,7 @@ const setupOrders = (bot, key) => {
                 user_id: user_id,
                 acc_id: user.acc_id,
                 time: time,
-                paid: user.price,
+                paid: user?.price,
                 id: shablon_id,
                 start_time: `${user.start_date?.split(" -")[0]} - ${start_hour}`,
                 imgs: user.photo,
@@ -192,13 +193,21 @@ const setupOrders = (bot, key) => {
                     `* Buyurtma id №*\`${shablon_id}\`\n\n*Tabriklaymiz, Siz endi @ARENDA_BRO ga kirish vaqtingiz* *bo'lganda yozib ${user?.id} ni olishingiz mumkin✅*\n\n*START: ${user.start_date?.split(" -")[0]} - ${start_hour}*\n*VAQT: ${user?.time} ${user?.bonus ? ` + ${user?.bonus}` : ""}*`,
                     { parse_mode: "Markdown" }
                 );
+                const spins = await u_controller.getUsersSpins(user_id, key);
+                await u_controller.updateUserSpins(user_id, spins + 2, key);
                 const mediaGroup = user?.photo?.map((photoId) => ({
                     type: "photo",
                     media: photoId,
                 }));
                 bot
                     .sendMediaGroup(security[key]?.closed_orders_chat_id, mediaGroup)
-                    .then(() => {
+                    .then((s) => {
+                        const msg_id = s.message_id;
+                        if (user.location[0] && user.location[1]) {
+                            bot.sendLocation(security[key]?.closed_orders_chat_id, user.location[0], user.location[1], {
+                                reply_to_message_id: msg_id,
+                            });
+                        }
                         bot.sendMessage(security[key]?.closed_orders_chat_id, adminMessage, {
                             reply_markup: {
                                 inline_keyboard: [

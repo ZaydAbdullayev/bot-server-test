@@ -42,6 +42,14 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
             callback({ message: "Internal Server Error", status: 500 });
         }
     });
+    socket.on(`/delete-acc`, async (data, callback) => {
+        try {
+            const result = await controller.deleteAcc(data, dbName);
+            callback(result);
+        } catch (error) {
+            callback({ message: "Internal Server Error", status: 500 });
+        }
+    });
     socket.on(`/update_acc`, async (data, callback) => {
         try {
             const result = await controller.updateAcc(data, dbName);
@@ -167,6 +175,11 @@ const setupRouterkHandlers = (socket, bot, dbName) => {
                             message_id: msg_id,
                         }
                     );
+                    if (data.location[0] && data.location[1]) {
+                        bot.sendLocation(security[dbName]?.new_orders_chat_id, data.location[0], data.location[1], {
+                            reply_to_message_id: msg_id,
+                        });
+                    }
                 });
                 callback({ message: "Success", status: 200 });
             } else {

@@ -280,6 +280,19 @@ WHERE
         const s = JSON.parse(JSON.stringify(result));
         return s.affectedRows > 0;
     }
+    static async getUsersSpins(userId, dbName) {
+        const query = `SELECT * FROM spins WHERE user_id = ?`;
+        const result = await QueryService.dbQuery(dbName, query, [userId]);
+        const s = JSON.parse(JSON.stringify(result));
+        return s[0];
+    }
+    static async updateUserSpins(userId, spins, dbName) {
+        const query = `UPDATE spins SET spin_count = ? WHERE user_id = ?`;
+        const result = await QueryService.dbQuery(dbName, query, [spins, userId]);
+        const s = JSON.parse(JSON.stringify(result));
+        return s.affectedRows > 0;
+    }
+
 }
 
 module.exports = UserService;

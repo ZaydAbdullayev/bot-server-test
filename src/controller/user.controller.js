@@ -39,6 +39,18 @@ class UserController {
             return { error: error.message };
         }
     }
+    async deleteAcc(id, dbName) {
+        try {
+            const result = await rg_service.deleteAcc(id, dbName);
+            if (result) {
+                return { message: "ACC deleted successfully!", status: 200 };
+            } else {
+                return { message: "Failed to delete ACC!", status: 400 };
+            }
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
     async getAccsShortName(dbName) {
         try {
             const result = await service.getAccsShortName(dbName);
@@ -139,9 +151,25 @@ class UserController {
             return { error: error.message };
         }
     }
-    async deleteKonkurs(name, dbName) { 
+    async deleteKonkurs(name, dbName) {
         try {
             const data = await service.deleteKonkurs(name, dbName);
+            return data;
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
+    async getUsersSpins(userId, dbName) {
+        try {
+            const data = await service.getUsersSpins(userId, dbName);
+            return data;
+        } catch (error) {
+            return { error: error.message };
+        }
+    }
+    async updateUserSpins(userId, spins, dbName) {
+        try {
+            const data = await service.updateUserSpins(userId, spins, dbName);
             return data;
         } catch (error) {
             return { error: error.message };

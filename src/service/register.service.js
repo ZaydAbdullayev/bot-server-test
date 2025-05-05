@@ -77,6 +77,8 @@ class RegisterService {
     }
     static async handleUserResponse(user, action_hour, botmode = null, dbName) {
         try {
+            console.log("User:", user);
+
             const date = user?.start_time?.split(" - ");
             user.start_date = date?.[0];
             user.start_hour = date?.[1];
@@ -349,7 +351,7 @@ ORDER BY
         }
     }
     static async addAcc(acc, id, dbName) {
-        const daily_price_list = Object.values(acc.daily_price_list);
+        const daily_price_list = Object.values(acc?.daily_price_list || {});
         const query = `INSERT INTO accounts (acc_id, short_name, acc_name, description, video_id, imgs, owner_id, price_list, custom_price_list, hour_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE short_name = VALUES(short_name), acc_name = VALUES(acc_name), description = VALUES(description), video_id = VALUES(video_id), imgs = VALUES(imgs), owner_id = VALUES(owner_id), price_list = VALUES(price_list), custom_price_list = VALUES(custom_price_list), hour_by = VALUES(hour_by)`;
         const values = [
             id,
@@ -363,7 +365,6 @@ ORDER BY
             JSON.stringify(daily_price_list),
             acc.hour_by,
         ];
-
         try {
             const result = await db.dbQuery(dbName, query, values);
             return result.affectedRows > 0;
@@ -372,6 +373,18 @@ ORDER BY
             throw error;
         }
     }
+
+    static async deleteAcc(id, dbName) {
+        const query = `DELETE FROM accounts WHERE acc_id = ?`;
+        try {
+            const result = await db.dbQuery(dbName, query, [id]);
+            return result.affectedRows > 0;
+        } catch (error) {
+            console.error("Error deleting acc:", error);
+            throw error;
+        }
+    }
+
 }
 
 module.exports = RegisterService;

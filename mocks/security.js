@@ -1,7 +1,7 @@
 // Mocks for security.js
 // This file is used to store the data that is used in the application.
 const tokens = [
-    { name: 'arenda_3', token: '7671850981:AAG_ZICAhkD4AUd3RfJFS4znZ_tuS7KGqIY' },
+    { name: 'arenda_2', token: '7671850981:AAG_ZICAhkD4AUd3RfJFS4znZ_tuS7KGqIY' },
     // { name: 'arenda_2', token: '7468201877:AAHINezru2V403UXq_3XuxtNDPUSwsA10EQ' },
     // { name: 'arenda_3', token: '8023014929:AAGCD3_GinOdsZlHLsc6b8XkHdPP2DQRa14' }
 ]
@@ -20,7 +20,7 @@ const arenda_1 = {
     new_orders_chat_id: '-1002389470396',
     main_channel: 1831538012,
     registered_users_chat_id: '-1002043732390',
-    db_name: 'arenda_3',
+    db_name: 'arenda_2',
 }
 
 // informations about the bot of the arenda_2 
